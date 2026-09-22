@@ -1,16 +1,18 @@
 {
   "expo": {
     "name": "BlueSense",
-    "slug": "BlueSense",
+    "slug": "bluesense",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bluesense",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.bluesense.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.bluesense.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
