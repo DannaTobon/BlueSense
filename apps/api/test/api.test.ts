@@ -1,37 +1,13 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import { test } from 'node:test';
 
-import express, { type Express } from 'express';
+import express from 'express';
 
 import { createApp } from '../src/app.js';
 import { DEFAULT_PORT, readConfig } from '../src/config.js';
 import { unexpectedErrorHandler } from '../src/error-handlers.js';
 
-async function withServer(app: Express, run: (baseUrl: string) => Promise<void>): Promise<void> {
-  const server = app.listen(0, '127.0.0.1');
-  await new Promise<void>((resolve, reject) => {
-    server.once('listening', resolve);
-    server.once('error', reject);
-  });
-
-  const { port } = server.address() as AddressInfo;
-
-  try {
-    await run(`http://127.0.0.1:${port}`);
-  } finally {
-    await new Promise<void>((resolve, reject) => {
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        resolve();
-      });
-    });
-  }
-}
+import { withServer } from './helpers.js';
 
 void test('configuration uses the default port and validates explicit values', () => {
   assert.deepEqual(readConfig({}), { port: DEFAULT_PORT });
