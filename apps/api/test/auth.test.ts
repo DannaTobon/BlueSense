@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { FirebaseAuthError } from 'firebase-admin/auth';
+
 import { createApp } from '../src/app.js';
 import type { TokenVerifier, VerifiedIdentity } from '../src/auth/token-verifier.js';
 
@@ -24,6 +26,13 @@ function createFailingVerifier(error: Error): TokenVerifier {
 
 function createCodedError(code: string): Error {
   return Object.assign(new Error('Token validation failed.'), { code });
+}
+
+function createFirebaseArgumentError(message: string): FirebaseAuthError {
+  return new FirebaseAuthError(
+    { code: 'argument-error', message: 'Invalid argument provided.' },
+    message,
+  );
 }
 
 void test('GET /me rejects missing and malformed authorization headers', async () => {
@@ -64,12 +73,7 @@ void test('GET /me rejects invalid and expired tokens', async () => {
   };
 
   await withServer(createApp({ tokenVerifier: verifier }), async (baseUrl) => {
-    const errorCodes = [
-      'auth/argument-error',
-      'auth/id-token-expired',
-      'auth/id-token-revoked',
-      'auth/invalid-id-token',
-    ];
+    const errorCodes = ['auth/id-token-expired', 'auth/id-token-revoked', 'auth/invalid-id-token'];
 
     for (const code of errorCodes) {
       const response = await fetch(`${baseUrl}/me`, {
@@ -85,6 +89,120 @@ void test('GET /me rejects invalid and expired tokens', async () => {
       });
     }
   });
+});
+
+void test('GET /me classifies the installed SDK malformed-token error as 401', async () => {
+  const verifier = createFailingVerifier(
+    createFirebaseArgumentError('Decoding Firebase ID token failed. Make sure you passed a JWT.'),
+  );
+
+  await withServer(createApp({ tokenVerifier: verifier }), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/me`, {
+      headers: { Authorization: 'Bearer malformed-token' },
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid or expired authentication token.',
+      },
+    });
+  });
+});
+
+void test('GET /me keeps the installed SDK certificate-fetch error as internal', async (context) => {
+  context.mock.method(console, 'error', () => {});
+  const verifier = createFailingVerifier(
+    createFirebaseArgumentError('Error fetching public keys: getaddrinfo ENOTFOUND googleapis.com'),
+  );
+
+  await withServer(createApp({ tokenVerifier: verifier }), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/me`, {
+      headers: { Authorization: 'Bearer structurally-valid-token' },
+    });
+
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Internal server error.',
+      },
+    });
+  });
+});
+
+void test('CORS allows configured web origins without weakening authentication', async () => {
+  const allowedOrigin = 'http://localhost:8081';
+  const verifier = createVerifier({ uid: 'web-user', email: 'web@example.com' });
+
+  await withServer(
+    createApp({ tokenVerifier: verifier, corsAllowedOrigins: [allowedOrigin] }),
+    async (baseUrl) => {
+      const preflight = await fetch(`${baseUrl}/me`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: allowedOrigin,
+          'Access-Control-Request-Method': 'GET',
+          'Access-Control-Request-Headers': 'authorization',
+        },
+      });
+
+      assert.equal(preflight.status, 204);
+      assert.equal(preflight.headers.get('access-control-allow-origin'), allowedOrigin);
+      assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET');
+      assert.equal(preflight.headers.get('access-control-allow-headers'), 'Authorization');
+      assert.equal(preflight.headers.get('access-control-allow-credentials'), null);
+
+      const unauthorized = await fetch(`${baseUrl}/me`, { headers: { Origin: allowedOrigin } });
+      assert.equal(unauthorized.status, 401);
+      assert.equal(unauthorized.headers.get('access-control-allow-origin'), allowedOrigin);
+
+      const authorized = await fetch(`${baseUrl}/me`, {
+        headers: { Origin: allowedOrigin, Authorization: 'Bearer valid-id-token' },
+      });
+      assert.equal(authorized.status, 200);
+      assert.equal(authorized.headers.get('access-control-allow-origin'), allowedOrigin);
+    },
+  );
+});
+
+void test('CORS withholds permission from unlisted origins and leaves native requests working', async () => {
+  let verificationCalls = 0;
+  const verifier: TokenVerifier = {
+    verifyIdToken() {
+      verificationCalls += 1;
+      return Promise.resolve({ uid: 'native-user', email: null });
+    },
+  };
+
+  await withServer(
+    createApp({ tokenVerifier: verifier, corsAllowedOrigins: ['http://localhost:8081'] }),
+    async (baseUrl) => {
+      const disallowed = await fetch(`${baseUrl}/me`, {
+        headers: {
+          Origin: 'https://untrusted.example',
+          Authorization: 'Bearer valid-id-token',
+        },
+      });
+      assert.equal(disallowed.status, 200);
+      assert.equal(disallowed.headers.get('access-control-allow-origin'), null);
+
+      const native = await fetch(`${baseUrl}/me`, {
+        headers: { Authorization: 'Bearer valid-id-token' },
+      });
+      assert.equal(native.status, 200);
+      assert.equal(native.headers.get('access-control-allow-origin'), null);
+
+      const health = await fetch(`${baseUrl}/health`, {
+        headers: { Origin: 'http://localhost:8081' },
+      });
+      assert.equal(health.status, 200);
+      assert.deepEqual(await health.json(), { status: 'ok' });
+    },
+  );
+
+  assert.equal(verificationCalls, 2);
 });
 
 void test('GET /me returns only the identity produced by the verified token', async () => {

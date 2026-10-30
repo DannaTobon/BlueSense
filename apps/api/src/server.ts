@@ -3,8 +3,8 @@ import { readConfig } from './config.js';
 
 function startServer(): void {
   try {
-    const { port } = readConfig();
-    const server = createApp().listen(port, () => {
+    const { port, corsAllowedOrigins } = readConfig();
+    const server = createApp({ corsAllowedOrigins }).listen(port, () => {
       console.log(`BlueSense API listening on port ${port}.`);
     });
 
