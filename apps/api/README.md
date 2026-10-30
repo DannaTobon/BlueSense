@@ -21,15 +21,17 @@ El repositorio conserva un único `package-lock.json` en la raíz. No ejecutes i
 
 La API admite estas variables de entorno:
 
-| Variable                          | Requerida | Valor predeterminado | Validación                                  |
-| --------------------------------- | --------- | -------------------- | ------------------------------------------- |
-| `PORT`                            | No        | `3000`               | Entero entre `1` y `65535`                  |
-| `GOOGLE_APPLICATION_CREDENTIALS`  | No        | —                    | Ruta a credenciales ADC, sólo en servidor   |
+| Variable                         | Requerida | Valor predeterminado                          | Validación                                |
+| -------------------------------- | --------- | --------------------------------------------- | ----------------------------------------- |
+| `PORT`                           | No        | `3000`                                        | Entero entre `1` y `65535`                |
+| `CORS_ALLOWED_ORIGINS`           | No        | `http://localhost:8081,http://127.0.0.1:8081` | Lista de orígenes HTTP(S), sin comodín    |
+| `GOOGLE_APPLICATION_CREDENTIALS` | No        | —                                             | Ruta a credenciales ADC, sólo en servidor |
 
 Para usar un archivo local, copia `apps/api/.env.example` como `apps/api/.env` y cambia únicamente valores de desarrollo:
 
 ```dotenv
 PORT=3000
+CORS_ALLOWED_ORIGINS=http://localhost:8081,http://127.0.0.1:8081
 ```
 
 `GOOGLE_APPLICATION_CREDENTIALS` no es necesaria para `GET /me`: la verificación de ID tokens usa las claves públicas de Google. Se documenta como opción oficial para futuras operaciones administrativas que sí necesiten credenciales. Nunca copies una clave privada al repositorio, a la app móvil ni a la documentación.
@@ -43,6 +45,10 @@ Invalid PORT: expected an integer from 1 to 65535.
 ```
 
 Los archivos `.env` locales están ignorados por Git; `.env.example` sólo contiene valores públicos de ejemplo.
+
+Los orígenes predeterminados corresponden a `npm run web` en el puerto estándar de Expo. Si Expo selecciona otro puerto o se despliega una aplicación web, configura su origen exacto. La API no acepta `*`, no refleja orígenes desconocidos y no habilita credenciales de cookies; la autenticación sigue dependiendo del Bearer token verificado.
+
+Cuando `NODE_ENV=production`, el arranque falla si existe `FIREBASE_AUTH_EMULATOR_HOST`. No configures esa variable para la prueba contra el proyecto real `bluesense-347f0`.
 
 ## Comandos
 
