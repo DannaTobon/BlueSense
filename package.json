@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/mobile"
+    "apps/mobile",
+    "apps/api"
   ],
   "packageManager": "npm@10.9.4",
   "scripts": {
@@ -15,7 +16,15 @@
     "typecheck": "npm run typecheck --workspace @bluesense/mobile",
     "format": "npm run format --workspace @bluesense/mobile",
     "format:check": "npm run format:check --workspace @bluesense/mobile",
-    "doctor": "expo-doctor apps/mobile"
+    "doctor": "expo-doctor apps/mobile",
+    "api:dev": "npm run dev --workspace @bluesense/api",
+    "api:start": "npm run start --workspace @bluesense/api",
+    "api:typecheck": "npm run typecheck --workspace @bluesense/api",
+    "api:lint": "npm run lint --workspace @bluesense/api",
+    "api:format": "npm run format --workspace @bluesense/api",
+    "api:format:check": "npm run format:check --workspace @bluesense/api",
+    "api:build": "npm run build --workspace @bluesense/api",
+    "api:test": "npm run test --workspace @bluesense/api"
   },
   "devDependencies": {
     "expo-doctor": "1.21.5"
