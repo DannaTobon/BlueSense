@@ -1,13 +1,13 @@
 # BlueSense
 
-BlueSense es un sistema IoT para monitorear el nivel de agua de un depósito doméstico. Este repositorio reúne los componentes del producto, aunque actualmente sólo la aplicación móvil tiene implementación ejecutable.
+BlueSense es un sistema IoT para monitorear el nivel de agua de un depósito doméstico. Este repositorio reúne la aplicación móvil, la base ejecutable de la API y la documentación compartida del producto.
 
 ## Estructura
 
 ```text
 apps/
 ├── mobile/     # aplicación React Native + Expo
-└── api/        # futuro backend Node.js/Express (pendiente)
+└── api/        # backend Node.js + Express + TypeScript
 firmware/       # futuro firmware del dispositivo (pendiente)
 docs/           # documentación compartida
 ```
@@ -52,8 +52,26 @@ npm run format:check  # verifica formato de la app móvil
 npm run doctor        # ejecuta Expo Doctor sobre apps/mobile
 ```
 
-Los comandos de calidad se limitan al workspace móvil y no tratan el futuro backend o firmware como código React Native.
+Estos comandos se limitan al workspace móvil y no analizan el backend o firmware como código React Native.
 
-## Estado del resto de componentes
+## Backend API
 
-`apps/api/` y `firmware/` contienen únicamente documentación de alcance. No incluyen implementaciones ficticias ni decisiones pendientes sobre modelos de hardware.
+La base de `apps/api/` incluye un servidor Express ejecutable, TypeScript estricto, configuración validada de puerto, `GET /health` y respuestas JSON básicas para errores. No incluye todavía autenticación, persistencia ni funcionalidades de negocio.
+
+Comandos desde la raíz:
+
+```bash
+npm run api:dev           # inicia la API en desarrollo
+npm run api:build         # compila TypeScript
+npm run api:start         # inicia la compilación existente
+npm run api:test          # prueba configuración y respuestas HTTP
+npm run api:typecheck     # comprueba tipos de la API
+npm run api:lint          # ejecuta ESLint sobre la API
+npm run api:format:check  # verifica formato de la API
+```
+
+La configuración, el endpoint y las respuestas esperadas están documentados en [`apps/api/README.md`](apps/api/README.md).
+
+## Estado del firmware
+
+`firmware/` contiene únicamente documentación de alcance. No incluye implementaciones ficticias ni decisiones pendientes sobre modelos de hardware.
