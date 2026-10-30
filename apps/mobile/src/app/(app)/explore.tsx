@@ -9,6 +9,8 @@ const BASELINE_ITEMS = [
   'Expo Router: file-based routing, typed routes, native tabs',
   'ESLint y Prettier configurados',
   'Identificadores de app: com.bluesense.app',
+  'Autenticación con correo y contraseña mediante Firebase Authentication',
+  'Consulta autenticada GET /me contra la API',
 ];
 
 export default function ProjectStatusScreen() {

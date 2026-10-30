@@ -16,6 +16,7 @@
     "typecheck": "npm run typecheck --workspace @bluesense/mobile",
     "format": "npm run format --workspace @bluesense/mobile",
     "format:check": "npm run format:check --workspace @bluesense/mobile",
+    "test": "npm run test --workspaces --if-present",
     "doctor": "expo-doctor apps/mobile",
     "api:dev": "npm run dev --workspace @bluesense/api",
     "api:start": "npm run start --workspace @bluesense/api",
