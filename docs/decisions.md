@@ -20,6 +20,8 @@ These decisions should not be changed casually during implementation.
 - Level/volume calculations account for calibration and geometry.
 - ESP32 primarily sends physical measurements; backend owns business calculations.
 - ONLINE/OFFLINE is derived from `lastSeenAt`.
+- The project uses a single repository: `apps/mobile/` for the Expo app, `apps/api/` for the future backend, `firmware/` for future device code, and `docs/` for shared documentation.
+- The mobile application targets Expo SDK 58. The migration from SDK 57 was made to match the currently distributed Expo Go client.
 
 ## Changing a decision
 If implementation requires a change:

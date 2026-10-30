@@ -6,7 +6,7 @@ BlueSense is an IoT system for monitoring the water level of a household water d
 The product must not assume that every household uses a pump. The current MVP monitors water availability and recommends filling the deposit when appropriate. Physical pump control is future scope.
 
 ## Technology
-- Mobile: React Native, Expo SDK 57, TypeScript, Expo Router
+- Mobile: React Native, Expo SDK 58, TypeScript, Expo Router
 - Backend: Node.js, Express, TypeScript
 - Authentication: Firebase Authentication
 - Persistence: Cloud Firestore
@@ -23,6 +23,17 @@ ESP32 ── Wi-Fi/HTTPS ────┘
 ```
 
 The backend is the business and security boundary. Do not introduce direct Mobile → Firestore business flows.
+
+## Repository structure
+BlueSense uses a single repository with npm workspaces:
+```text
+apps/mobile/  # Expo mobile application
+apps/api/     # Future Node.js/Express API (documentation only for now)
+firmware/     # Future ESP32 firmware (documentation only for now)
+docs/         # Shared project documentation
+```
+
+Only `apps/mobile` is currently an executable workspace. Do not create placeholder backend or firmware implementations before their requirements and hardware details are available.
 
 ## MVP rules
 - 1 account → 1 BlueSense → 1 water deposit.
@@ -66,7 +77,7 @@ history
 ## Mobile architecture
 Preferred conceptual structure:
 ```text
-src/
+apps/mobile/src/
 ├── app/
 ├── components/
 ├── features/

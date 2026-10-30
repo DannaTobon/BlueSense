@@ -5,7 +5,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 const BASELINE_ITEMS = [
-  'Expo SDK 57 + React Native + TypeScript strict',
+  'Expo SDK 58 + React Native + TypeScript strict',
   'Expo Router: file-based routing, typed routes, native tabs',
   'ESLint y Prettier configurados',
   'Identificadores de app: com.bluesense.app',
