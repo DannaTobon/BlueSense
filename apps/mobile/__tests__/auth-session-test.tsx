@@ -138,9 +138,7 @@ describe('registration session updates', () => {
     await act(() => {
       registrationPromise = currentSession.register(registrationInput);
     });
-    await act(() =>
-      emit({ uid: 'newer-user', name: 'Grace Hopper', email: 'grace@example.com' }),
-    );
+    await act(() => emit({ uid: 'newer-user', name: 'Grace Hopper', email: 'grace@example.com' }));
     pending.resolve({
       uid: 'older-user',
       name: 'Ada Lovelace',
