@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react-native';
+import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 
 import {
@@ -30,6 +31,7 @@ function deferred<T>() {
 
 function createService(register: AuthService['register']) {
   let listener: AuthStateListener | null = null;
+  let signOutCalls = 0;
   const service: AuthService = {
     observeAuthState(nextListener) {
       listener = nextListener;
@@ -42,7 +44,9 @@ function createService(register: AuthService['register']) {
     async signIn() {
       throw new Error('Not used by this test.');
     },
-    async signOut() {},
+    async signOut() {
+      signOutCalls += 1;
+    },
     async getIdToken() {
       return 'unused-token';
     },
@@ -53,12 +57,18 @@ function createService(register: AuthService['register']) {
     emit(user: AuthUser | null) {
       listener?.(user);
     },
+    getSignOutCalls() {
+      return signOutCalls;
+    },
   };
 }
 
-function SessionProbe() {
+function SessionProbe({ onSession }: { onSession: (session: AuthSessionValue) => void }) {
   const session = useAuthSession();
-  currentSession = session;
+
+  useEffect(() => {
+    onSession(session);
+  }, [onSession, session]);
 
   return (
     <View>
@@ -70,23 +80,36 @@ function SessionProbe() {
   );
 }
 
-let currentSession: AuthSessionValue;
-
 async function renderSession(service: AuthService) {
-  return render(
+  let currentSession: AuthSessionValue | null = null;
+  const captureSession = (session: AuthSessionValue) => {
+    currentSession = session;
+  };
+
+  const result = await render(
     <AuthSessionProvider authService={service}>
-      <SessionProbe />
+      <SessionProbe onSession={captureSession} />
     </AuthSessionProvider>,
   );
+
+  return {
+    ...result,
+    getSession() {
+      if (!currentSession) {
+        throw new Error('The session probe has not received context yet.');
+      }
+      return currentSession;
+    },
+  };
 }
 
 describe('registration session updates', () => {
   test('shows the saved display name immediately after complete registration', async () => {
     const user = { uid: 'new-user', name: 'Ada Lovelace', email: 'ada@example.com' };
     const { service } = createService(async () => user);
-    await renderSession(service);
+    const { getSession } = await renderSession(service);
 
-    await act(async () => currentSession.register(registrationInput));
+    await act(async () => getSession().register(registrationInput));
 
     expect(screen.getByTestId('name')).toHaveTextContent('Ada Lovelace');
     expect(screen.getByTestId('uid')).toHaveTextContent('new-user');
@@ -98,9 +121,9 @@ describe('registration session updates', () => {
     const { service } = createService(async () => {
       throw new PartialRegistrationError(user);
     });
-    await renderSession(service);
+    const { getSession } = await renderSession(service);
 
-    await act(async () => currentSession.register(registrationInput));
+    await act(async () => getSession().register(registrationInput));
 
     expect(screen.getByTestId('uid')).toHaveTextContent('partial-user');
     expect(screen.getByTestId('status')).toHaveTextContent('authenticated');
@@ -109,14 +132,15 @@ describe('registration session updates', () => {
 
   test('ignores a completed registration after sign-out starts', async () => {
     const pending = deferred<AuthUser>();
-    const { service } = createService(() => pending.promise);
-    await renderSession(service);
+    const { service, emit, getSignOutCalls } = createService(() => pending.promise);
+    const { getSession } = await renderSession(service);
 
     let registrationPromise!: Promise<void>;
     await act(() => {
-      registrationPromise = currentSession.register(registrationInput);
+      registrationPromise = getSession().register(registrationInput);
     });
-    await act(async () => currentSession.signOut());
+    await act(async () => getSession().signOut());
+    await act(() => emit({ uid: 'stale-user', name: null, email: 'stale@example.com' }));
     pending.resolve({
       uid: 'stale-user',
       name: 'Stale Name',
@@ -127,16 +151,17 @@ describe('registration session updates', () => {
     expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated');
     expect(screen.getByTestId('uid')).toHaveTextContent('none');
     expect(screen.getByTestId('name')).toHaveTextContent('none');
+    expect(getSignOutCalls()).toBe(2);
   });
 
   test('does not replace a newer observed session with an older registration result', async () => {
     const pending = deferred<AuthUser>();
     const { service, emit } = createService(() => pending.promise);
-    await renderSession(service);
+    const { getSession } = await renderSession(service);
 
     let registrationPromise!: Promise<void>;
     await act(() => {
-      registrationPromise = currentSession.register(registrationInput);
+      registrationPromise = getSession().register(registrationInput);
     });
     await act(() => emit({ uid: 'newer-user', name: 'Grace Hopper', email: 'grace@example.com' }));
     pending.resolve({

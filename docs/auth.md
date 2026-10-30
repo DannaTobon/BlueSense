@@ -195,7 +195,7 @@ Mobile unit tests cover:
 - Real Expo Router protected guards for signed-in, signed-out, and restoring states.
 - Immediate complete and partial registration state, plus stale completion after logout or session replacement.
 
-Test doubles are defined only in `test/` files and injected into `createApp`; production code has no test-only branches.
+API test doubles are defined under `apps/api/test/` and injected into `createApp`. Mobile doubles live in `apps/mobile/__tests__/` and Jest setup, and are injected through `AuthSessionProvider`. Production code has no environment-controlled authentication bypass.
 
 ## Dependency and line-ending diagnostics
 

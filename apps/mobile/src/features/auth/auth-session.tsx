@@ -50,6 +50,8 @@ export function AuthSessionProvider({
   const versionRef = useRef(0);
   const operationRef = useRef(0);
   const currentUserRef = useRef<AuthUser | null>(null);
+  const signedOutOperationRef = useRef<number | null>(null);
+  const suppressAuthenticatedObserversRef = useRef(false);
 
   const invalidateSession = useCallback(() => {
     versionRef.current += 1;
@@ -57,6 +59,10 @@ export function AuthSessionProvider({
 
   useEffect(() => {
     const unsubscribe = authService.observeAuthState((user) => {
+      if (user && suppressAuthenticatedObserversRef.current) {
+        return;
+      }
+
       invalidateSession();
       const nextState = sessionStateFromUser(user);
       currentUserRef.current = user;
@@ -74,6 +80,8 @@ export function AuthSessionProvider({
   const signIn = useCallback(
     async (input: SignInInput) => {
       const operation = ++operationRef.current;
+      signedOutOperationRef.current = null;
+      suppressAuthenticatedObserversRef.current = false;
       const user = await authService.signIn(input);
 
       if (
@@ -90,23 +98,33 @@ export function AuthSessionProvider({
   const register = useCallback(
     async (input: RegisterInput) => {
       const operation = ++operationRef.current;
+      signedOutOperationRef.current = null;
+      suppressAuthenticatedObserversRef.current = false;
 
       try {
         const user = await authService.register(input);
 
-        if (
-          operation === operationRef.current &&
-          (currentUserRef.current === null || currentUserRef.current.uid === user.uid)
-        ) {
+        if (operation !== operationRef.current) {
+          if (signedOutOperationRef.current === operationRef.current) {
+            await authService.signOut();
+          }
+          return;
+        }
+
+        if (currentUserRef.current === null || currentUserRef.current.uid === user.uid) {
           currentUserRef.current = user;
           setState(sessionStateFromUser(user));
         }
       } catch (error: unknown) {
         if (error instanceof PartialRegistrationError) {
-          if (
-            operation === operationRef.current &&
-            (currentUserRef.current === null || currentUserRef.current.uid === error.user.uid)
-          ) {
+          if (operation !== operationRef.current) {
+            if (signedOutOperationRef.current === operationRef.current) {
+              await authService.signOut();
+            }
+            return;
+          }
+
+          if (currentUserRef.current === null || currentUserRef.current.uid === error.user.uid) {
             currentUserRef.current = error.user;
             setState(sessionStateFromUser(error.user));
             setNotice(PARTIAL_REGISTRATION_NOTICE);
@@ -121,9 +139,16 @@ export function AuthSessionProvider({
   );
 
   const signOut = useCallback(async () => {
-    operationRef.current += 1;
+    const operation = ++operationRef.current;
+    signedOutOperationRef.current = operation;
+    suppressAuthenticatedObserversRef.current = true;
     invalidateSession();
     await authService.signOut();
+
+    if (operation !== operationRef.current) {
+      return;
+    }
+
     currentUserRef.current = null;
     setNotice(null);
     setState(sessionStateFromUser(null));
