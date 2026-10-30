@@ -47,6 +47,7 @@ npm run android       # solicita abrir la app en Android
 npm run ios           # solicita abrir la app en iOS
 npm run web           # inicia la versión web
 npm run typecheck     # comprueba tipos de la app móvil
+npm test              # ejecuta las pruebas de todos los workspaces
 npm run lint          # ejecuta ESLint sobre la app móvil
 npm run format:check  # verifica formato de la app móvil
 npm run doctor        # ejecuta Expo Doctor sobre apps/mobile
@@ -54,9 +55,17 @@ npm run doctor        # ejecuta Expo Doctor sobre apps/mobile
 
 Estos comandos se limitan al workspace móvil y no analizan el backend o firmware como código React Native.
 
+### Autenticación
+
+La app usa Firebase Authentication con correo y contraseña. La configuración pública se carga desde `apps/mobile/.env`; usa [`apps/mobile/.env.example`](apps/mobile/.env.example) como plantilla. El archivo `.env` está ignorado por Git.
+
+`EXPO_PUBLIC_API_URL` debe apuntar a la API. En un iPhone físico, `localhost` es el propio teléfono: usa la IP LAN del PC, por ejemplo `http://<PC_LAN_IP>:3000`, y asegúrate de que ambos estén en la misma red. HTTP local es sólo para desarrollo; producción requiere HTTPS.
+
+El flujo completo, el contrato de `GET /me`, la persistencia de sesión, las limitaciones y los pasos manuales están en [`docs/auth.md`](docs/auth.md).
+
 ## Backend API
 
-La base de `apps/api/` incluye un servidor Express ejecutable, TypeScript estricto, configuración validada de puerto, `GET /health` y respuestas JSON básicas para errores. No incluye todavía autenticación, persistencia ni funcionalidades de negocio.
+La base de `apps/api/` incluye un servidor Express ejecutable, TypeScript estricto, configuración validada de puerto, `GET /health`, verificación de ID tokens de Firebase Authentication y `GET /me`. No incluye todavía Firestore, perfiles ni funcionalidades de negocio.
 
 Comandos desde la raíz:
 
@@ -64,13 +73,13 @@ Comandos desde la raíz:
 npm run api:dev           # inicia la API en desarrollo
 npm run api:build         # compila TypeScript
 npm run api:start         # inicia la compilación existente
-npm run api:test          # prueba configuración y respuestas HTTP
+npm run api:test          # prueba configuración, salud y autenticación
 npm run api:typecheck     # comprueba tipos de la API
 npm run api:lint          # ejecuta ESLint sobre la API
 npm run api:format:check  # verifica formato de la API
 ```
 
-La configuración, el endpoint y las respuestas esperadas están documentados en [`apps/api/README.md`](apps/api/README.md).
+La configuración, los endpoints y las respuestas esperadas están documentados en [`apps/api/README.md`](apps/api/README.md).
 
 ## Estado del firmware
 
