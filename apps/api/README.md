@@ -111,4 +111,4 @@ Esta base todavía no implementa autenticación, autorización, usuarios, depós
 - [Inicio de typescript-eslint](https://typescript-eslint.io/getting-started/): configuración plana y reglas TypeScript para ESLint.
 - [Registro oficial de Express](https://www.npmjs.com/package/express): versión publicada y requisito de Node.js, consultados con `npm view`.
 
-Las versiones de TypeScript, ESLint y Prettier se alinean con el workspace móvil existente para evitar actualizar sus dependencias. Las herramientas del backend permanecen declaradas en `apps/api/package.json` y sus configuraciones sólo analizan la API.
+Las herramientas del backend permanecen declaradas en `apps/api/package.json` y sus configuraciones sólo analizan la API. Sus versiones se eligieron por compatibilidad con Node.js 22.13 o posterior sin actualizar las dependencias móviles.
