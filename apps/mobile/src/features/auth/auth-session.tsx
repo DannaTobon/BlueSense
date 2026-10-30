@@ -11,6 +11,7 @@ import {
 
 import {
   PartialRegistrationError,
+  type AuthService,
   type AuthUser,
   type RegisterInput,
   type SignInInput,
@@ -36,19 +37,29 @@ const AuthSessionContext = createContext<AuthSessionValue | null>(null);
 const PARTIAL_REGISTRATION_NOTICE =
   'Tu cuenta se creó, pero no se pudo guardar tu nombre en el perfil de Firebase. La sesión sigue activa; el nombre se podrá actualizar más adelante.';
 
-export function AuthSessionProvider({ children }: PropsWithChildren) {
+interface AuthSessionProviderProps extends PropsWithChildren {
+  authService?: AuthService;
+}
+
+export function AuthSessionProvider({
+  children,
+  authService = firebaseAuthService,
+}: AuthSessionProviderProps) {
   const [state, setState] = useState<SessionState>({ status: 'loading', user: null });
   const [notice, setNotice] = useState<string | null>(null);
   const versionRef = useRef(0);
+  const operationRef = useRef(0);
+  const currentUserRef = useRef<AuthUser | null>(null);
 
   const invalidateSession = useCallback(() => {
     versionRef.current += 1;
   }, []);
 
   useEffect(() => {
-    const unsubscribe = firebaseAuthService.observeAuthState((user) => {
+    const unsubscribe = authService.observeAuthState((user) => {
       invalidateSession();
       const nextState = sessionStateFromUser(user);
+      currentUserRef.current = user;
 
       if (!nextState.user) {
         setNotice(null);
@@ -58,33 +69,67 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     });
 
     return unsubscribe;
-  }, [invalidateSession]);
+  }, [authService, invalidateSession]);
 
-  const signIn = useCallback(async (input: SignInInput) => {
-    await firebaseAuthService.signIn(input);
-  }, []);
+  const signIn = useCallback(
+    async (input: SignInInput) => {
+      const operation = ++operationRef.current;
+      const user = await authService.signIn(input);
 
-  const register = useCallback(async (input: RegisterInput) => {
-    try {
-      await firebaseAuthService.register(input);
-    } catch (error: unknown) {
-      if (error instanceof PartialRegistrationError) {
-        setNotice(PARTIAL_REGISTRATION_NOTICE);
-        return;
+      if (
+        operation === operationRef.current &&
+        (currentUserRef.current === null || currentUserRef.current.uid === user.uid)
+      ) {
+        currentUserRef.current = user;
+        setState(sessionStateFromUser(user));
       }
+    },
+    [authService],
+  );
 
-      throw error;
-    }
-  }, []);
+  const register = useCallback(
+    async (input: RegisterInput) => {
+      const operation = ++operationRef.current;
+
+      try {
+        const user = await authService.register(input);
+
+        if (
+          operation === operationRef.current &&
+          (currentUserRef.current === null || currentUserRef.current.uid === user.uid)
+        ) {
+          currentUserRef.current = user;
+          setState(sessionStateFromUser(user));
+        }
+      } catch (error: unknown) {
+        if (error instanceof PartialRegistrationError) {
+          if (
+            operation === operationRef.current &&
+            (currentUserRef.current === null || currentUserRef.current.uid === error.user.uid)
+          ) {
+            currentUserRef.current = error.user;
+            setState(sessionStateFromUser(error.user));
+            setNotice(PARTIAL_REGISTRATION_NOTICE);
+          }
+          return;
+        }
+
+        throw error;
+      }
+    },
+    [authService],
+  );
 
   const signOut = useCallback(async () => {
-    await firebaseAuthService.signOut();
+    operationRef.current += 1;
     invalidateSession();
+    await authService.signOut();
+    currentUserRef.current = null;
     setNotice(null);
     setState(sessionStateFromUser(null));
-  }, [invalidateSession]);
+  }, [authService, invalidateSession]);
 
-  const getIdToken = useCallback(() => firebaseAuthService.getIdToken(), []);
+  const getIdToken = useCallback(() => authService.getIdToken(), [authService]);
   const getSessionVersion = useCallback(() => versionRef.current, []);
   const dismissNotice = useCallback(() => setNotice(null), []);
 
