@@ -199,14 +199,36 @@ API test doubles are defined under `apps/api/test/` and injected into `createApp
 
 ## Dependency and line-ending diagnostics
 
-At the time of this correction, `npm audit` reports 20 findings: 13 low and 7 high. `origin/main` reported 5 low and 3 high before this authentication branch.
+The latest audit comparison uses the current advisory database against both lockfiles:
 
-- Four additional high findings come through the mobile `firebase` package's bundled Firestore dependency and `@grpc/grpc-js`. BlueSense does not currently import Firestore or run a gRPC server in the mobile authentication flow, which limits known exposure but does not remove the vulnerable packages from the lockfile or make them safe for future use. Firebase 12.19.0 is the latest compatible major in the verified Node 22 environment; Firebase 13 modules require Node 24.12 or later. Audit's proposed downgrade to Firebase 9.14.0 is not a compatible correction for this implementation.
-- Eight additional low findings come from the SDK 58-compatible Jest/Expo Router test toolchain. These packages are development-only, but they still remain reportable supply-chain findings. Audit's suggested major downgrades conflict with Expo SDK 58's Jest 30 and React Native Testing Library 14 requirements.
+| Lockfile                      | Low | Moderate | High | Total |
+| ----------------------------- | --: | -------: | ---: | ----: |
+| `origin/main`                 |   2 |       26 |    3 |    31 |
+| `feature/auth-email-password` |   1 |       51 |    6 |    58 |
 
-No forced audit fix or out-of-range override is applied. Reassess compatible upstream releases before deployment and before any future Firestore use.
+The branch adds 27 report entries. No entry from `main` disappears, but npm's aggregate severity changes for two shared dependency nodes (`@expo/local-build-cache-provider` from low to moderate and `expo` from high to moderate), so the net severity counts alone do not describe the additions.
 
-On Windows, this checkout has `core.autocrlf=true`, no repository `.gitattributes`, and Prettier expects LF. Mobile lint therefore reports 371 CRLF warnings in pre-existing files while producing no lint errors; global format checks remain failing. This correction formats only touched files and does not perform a repository-wide line-ending rewrite or change global Git configuration.
+### Runtime dependencies added by authentication
+
+- Mobile adds `firebase@12.19.0` and AsyncStorage. AsyncStorage has no reported finding in this audit. The Firebase metapackage installs Firestore and Firestore compat even though this block imports only Firebase App/Auth. Their `@grpc/grpc-js@1.9.16` path adds four high report entries: `firebase`, `@firebase/firestore`, `@firebase/firestore-compat`, and `@grpc/grpc-js`. The advisories affect certificate authorization and server error disclosure in gRPC configurations. The current mobile flow neither imports Firestore nor runs a gRPC server, which reduces known reachability but does not remove the vulnerable code from the lockfile or establish that every bundling scenario is risk-free.
+- API adds `firebase-admin@14.5.0`. Its Admin/Google Cloud tree adds moderate entries for `gaxios`, `gcp-metadata`, and `google-gax` through vulnerable file-matching/cleanup tooling. `GET /me` does not call Firestore, and the Admin tree resolves `@grpc/grpc-js@1.14.7`; the high gRPC finding above comes from the mobile Firebase path. These are still runtime dependency findings and require upstream monitoring.
+
+### Development and test dependencies
+
+The remaining 20 new moderate entries come from the SDK 58-compatible Jest 30, `jest-expo`, React Native Jest preset, Babel coverage, `glob`/`minimatch`, and related test-runner packages. They are development-only and are not included intentionally in application runtime bundles. They can still affect local or CI execution, especially when tests or file patterns process untrusted repository content, so they are not treated as harmless.
+
+### Available corrections and acceptance
+
+- `npm audit fix --package-lock-only --dry-run` proposes zero compatible lockfile changes.
+- Firebase 12.19.0 is the latest compatible major in the verified Node 22 environment. Firebase 13 modules require Node 24.12 or later. Audit's Firebase 9.14.0 proposal is a major downgrade and is not a compatible correction for this implementation. Forcing a newer gRPC version would also leave Firestore's declared range.
+- Expo SDK 58 requires Jest 30 and React Native Testing Library 14. Audit's Jest 29 and `jest-expo` 32 proposals conflict with that toolchain.
+- Replacing the Firebase metapackage with lower-level modular packages could be investigated separately, but it has not been established as compatible with this Expo/React Native persistence setup and is not applied as an unverified security workaround.
+
+No forced audit fix, unsupported override, or unrelated major update is applied. The unresolved high entries in the runtime lockfile require an explicit temporary dependency-risk acceptance before integration, continued monitoring, and reassessment before any Firestore use. Based on the current code paths they are not considered a demonstrated exploit in this authentication flow, but they remain unresolved findings.
+
+### Line endings
+
+The repository now declares LF for text through `.gitattributes` and `endOfLine: lf` in both Prettier configurations, while explicitly marking known binary extensions as binary. The 19 files that failed formatting were inspected individually: every difference was CRLF-only, with no additional formatting change. Only those working files were normalized; tracked binary hashes were unchanged. Neither global Git configuration nor unrelated files were modified.
 
 ## Manual verification
 
