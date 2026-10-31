@@ -208,20 +208,28 @@ No forced audit fix or out-of-range override is applied. Reassess compatible ups
 
 On Windows, this checkout has `core.autocrlf=true`, no repository `.gitattributes`, and Prettier expects LF. Mobile lint therefore reports 371 CRLF warnings in pre-existing files while producing no lint errors; global format checks remain failing. This correction formats only touched files and does not perform a repository-wide line-ending rewrite or change global Git configuration.
 
-## Manual verification still required
+## Manual verification
 
-The following require a person and a real Firebase project; they were not performed by this implementation:
+### iPhone — validated by the user
 
-1. Create local `apps/mobile/.env` values.
-2. Start the API with `npm run api:dev` and check `GET /health`.
-3. Start Expo and open the app on a physical device.
-4. Register a test account and confirm the name is stored in Firebase Auth.
-5. Reload the app and confirm the session persists.
-6. Tap the `GET /me` check and confirm the verified UID and email.
-7. Sign out and confirm private routes are no longer reachable.
-8. Repeat on Android.
+The user validated the following authentication behavior on a physical iPhone with the real Firebase project and Expo Go:
 
-The SDK 58 baseline was previously checked on a physical iPhone. This authentication flow has not been physically validated on iPhone or Android.
+- Registration completed and the saved name was visible immediately.
+- `GET /me` reported a verified identity whose UID and email matched Firebase Authentication.
+- The Firebase session persisted after fully closing and reopening Expo Go.
+- Sign-out redirected to sign-in, and reopening the app afterward kept it signed out.
+- An incorrect password showed an error and did not grant access.
+- Correct credentials granted access and displayed the saved name.
+- Stopping the API showed a connection error without removing the Firebase session.
+- Restarting the API allowed `GET /me` to verify the identity again.
+
+No email address, UID, password, or token used during this validation is stored in the repository.
+
+### Still pending
+
+- Physical Android authentication validation.
+- Real browser validation of the web flow and CORS behavior.
+- Scenarios not listed in the confirmed iPhone evidence above.
 
 ## Official sources
 
