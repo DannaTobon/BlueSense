@@ -86,11 +86,6 @@ jobs:
       - name: Check API formatting
         run: npm run api:format:check
 
-      - name: "Simulacro académico: fallo intencional"
-        run: |
-          echo "Simulacro académico de fallo controlado: este error es intencional."
-          exit 1
-
   package:
     name: Package API artifact
     runs-on: ubuntu-latest

@@ -47,12 +47,18 @@ The workflow runs on pushes to `chore/ci-session08` and `main`, and on pull requ
 
 After a successful run, open its summary and find **Artifacts**. Download `bluesense-api-<commit SHA>` and inspect the contained `.tar.gz` archive. GitHub only publishes this final artifact if all three jobs succeed.
 
+## Controlled failure and correction
+
+- Failed execution: <https://github.com/DannaTobon/BlueSense/actions/runs/41168246093>.
+- Cause: the intentional step in `Test and quality` executed `exit 1`.
+- Consequence: `Package API artifact` was skipped because it depends on the successful completion of the test job.
+- Correction: the intentional failure step was removed without changing the existing tests, checks, or `needs` dependencies.
+- Recovery: pending verification in GitHub Actions.
+
 ## Evidence still pending
 
-- URL and final status of the first real GitHub Actions run on `chore/ci-session08`.
-- Screenshot or record of the successful three-job graph.
-- Logs demonstrating the commands executed by each job.
+- URL and final status of the recovery run on `chore/ci-session08`.
+- Screenshot or record of the recovered three-job graph.
 - Download and inspection of the packaged API artifact.
-- In a later phase only: evidence of the requested controlled failure and the subsequent correction.
 
-No intentional failure is included in this phase.
+The current workflow no longer includes the intentional failure.
