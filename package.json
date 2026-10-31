@@ -16,6 +16,7 @@
     "typecheck": "npm run typecheck --workspace @bluesense/mobile",
     "format": "npm run format --workspace @bluesense/mobile",
     "format:check": "npm run format:check --workspace @bluesense/mobile",
+    "test": "npm run test --workspaces --if-present",
     "doctor": "expo-doctor apps/mobile",
     "api:dev": "npm run dev --workspace @bluesense/api",
     "api:start": "npm run start --workspace @bluesense/api",
@@ -28,5 +29,9 @@
   },
   "devDependencies": {
     "expo-doctor": "1.21.5"
+  },
+  "overrides": {
+    "@firebase/app": "0.16.2",
+    "@firebase/app-compat": "0.5.18"
   }
 }

@@ -23,16 +23,22 @@ The backend is the business and security boundary.
 ```text
 Mobile App
    ↓
-Firebase Authentication
+Firebase Authentication (email/password)
    ↓
 Firebase ID Token
    ↓
 Backend API
    ↓
-Verify token
+verifyIdToken()
+   ↓
+GET /me → verified uid + email
    ↓
 Authorize resource access
 ```
+
+The backend verifies the token with the official Firebase Admin SDK. It never trusts a client-supplied UID. The mobile app does not access Firestore directly for business operations.
+
+The detailed authentication contract, persistence strategy, local-development URL guidance, and limitations are in [`auth.md`](auth.md).
 
 ## Provisioning
 ```text

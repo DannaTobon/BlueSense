@@ -28,12 +28,12 @@ The backend is the business and security boundary. Do not introduce direct Mobil
 BlueSense uses a single repository with npm workspaces:
 ```text
 apps/mobile/  # Expo mobile application
-apps/api/     # Future Node.js/Express API (documentation only for now)
+apps/api/     # Node.js/Express API
 firmware/     # Future ESP32 firmware (documentation only for now)
 docs/         # Shared project documentation
 ```
 
-Only `apps/mobile` is currently an executable workspace. Do not create placeholder backend or firmware implementations before their requirements and hardware details are available.
+`apps/mobile` and `apps/api` are executable workspaces. Do not create placeholder firmware implementations before their requirements and hardware details are available.
 
 ## MVP rules
 - 1 account → 1 BlueSense → 1 water deposit.
