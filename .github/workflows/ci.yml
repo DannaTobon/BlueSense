@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - chore/ci-session08
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22.22.0
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check mobile types
+        run: npm run typecheck
+
+      - name: Check API types
+        run: npm run api:typecheck
+
+      - name: Compile API
+        run: npm run api:build
+
+      - name: Preserve compiled API for packaging
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-dist-${{ github.sha }}
+          path: apps/api/dist
+          if-no-files-found: error
+          retention-days: 1
+
+  test:
+    name: Test and quality
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mobile and API tests
+        run: npm test
+
+      - name: Lint mobile
+        run: npm run lint
+
+      - name: Lint API
+        run: npm run api:lint
+
+      - name: Check mobile formatting
+        run: npm run format:check
+
+      - name: Check API formatting
+        run: npm run api:format:check
+
+  package:
+    name: Package API artifact
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Retrieve compiled API
+        uses: actions/download-artifact@v8
+        with:
+          name: api-dist-${{ github.sha }}
+          path: package-input/api-dist
+
+      - name: Verify and package compiled API
+        shell: bash
+        run: |
+          test -f package-input/api-dist/server.js
+          mkdir -p artifacts
+          tar -czf "artifacts/bluesense-api-${GITHUB_SHA}.tar.gz" -C package-input api-dist
+          test -s "artifacts/bluesense-api-${GITHUB_SHA}.tar.gz"
+
+      - name: Publish packaged API artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: bluesense-api-${{ github.sha }}
+          path: artifacts/bluesense-api-${{ github.sha }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
