@@ -1,4 +1,10 @@
-export type ContainerGeometry = 'vertical-cylinder' | 'rectangular';
+import type {
+  WaterContainerDraft,
+  WaterContainerGeometry,
+  WaterContainerInput,
+} from '@/types/water-container';
+
+export type ContainerGeometry = WaterContainerGeometry;
 
 /** Safety distance applied by the system in the MVP; not entered by the user. */
 export const SAFETY_DISTANCE_CM = 10;
@@ -22,23 +28,7 @@ export type ContainerFieldName =
 
 export type ContainerFieldErrors = Partial<Record<ContainerFieldName, string>>;
 
-interface ContainerConfigBase {
-  capacityLiters: number;
-  heightCm: number;
-}
-
-export interface VerticalCylinderConfig extends ContainerConfigBase {
-  geometry: 'vertical-cylinder';
-  radiusCm: number;
-}
-
-export interface RectangularConfig extends ContainerConfigBase {
-  geometry: 'rectangular';
-  lengthCm: number;
-  widthCm: number;
-}
-
-export type ContainerConfig = VerticalCylinderConfig | RectangularConfig;
+export type ContainerConfig = WaterContainerInput;
 
 export type ContainerValidationResult =
   { valid: true; config: ContainerConfig } | { valid: false; errors: ContainerFieldErrors };
@@ -51,6 +41,30 @@ export const EMPTY_CONTAINER_FORM: ContainerFormInput = {
   lengthCm: '',
   widthCm: '',
 };
+
+export function containerDraftToFormInput(draft: WaterContainerDraft): ContainerFormInput {
+  const base = {
+    geometry: draft.geometry,
+    capacityLiters: String(draft.capacityLiters),
+    heightCm: String(draft.heightCm),
+  };
+
+  if (draft.geometry === 'vertical-cylinder') {
+    return {
+      ...base,
+      radiusCm: String(draft.radiusCm),
+      lengthCm: '',
+      widthCm: '',
+    };
+  }
+
+  return {
+    ...base,
+    radiusCm: '',
+    lengthCm: String(draft.lengthCm),
+    widthCm: String(draft.widthCm),
+  };
+}
 
 type ParsedNumber = { ok: true; value: number } | { ok: false; error: string };
 
