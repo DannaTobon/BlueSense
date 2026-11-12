@@ -3,11 +3,11 @@
  * de agua, porcentaje de nivel y litros estimados.
  *
  * `distanceCm` se mide desde la parte superior del depósito (sensor hacia
- * abajo). La distancia de seguridad es el margen inferior inutilizable, por lo
- * que la altura operativa es `heightCm - safetyDistanceCm`. La altura de agua
- * se clampea a [0, alturaOperativa] y el porcentaje nunca sale de [0, 100].
- * La capacidad del usuario es un límite superior de litros, nunca un sustituto
- * de la geometría.
+ * abajo). La distancia de seguridad es la separación superior mínima desde el
+ * sensor, por lo que la altura operativa es `heightCm - safetyDistanceCm`. La
+ * altura de agua se clampea a [0, alturaOperativa] y el porcentaje nunca sale
+ * de [0, 100]. La capacidad del usuario es un límite superior de litros, nunca
+ * un sustituto de la geometría.
  */
 
 const PI = Math.PI;
