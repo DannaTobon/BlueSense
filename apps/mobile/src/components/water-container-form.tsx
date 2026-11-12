@@ -14,6 +14,7 @@ import {
   validateContainerForm,
   type ContainerConfig,
   type ContainerFieldErrors,
+  type ContainerFieldName,
   type ContainerFormInput,
   type ContainerGeometry,
 } from '@/features/water-container/container-form';
@@ -27,8 +28,17 @@ export function WaterContainerForm() {
   const [errors, setErrors] = useState<ContainerFieldErrors>({});
   const [readyConfig, setReadyConfig] = useState<ContainerConfig | null>(null);
 
-  function update(field: keyof ContainerFormInput, value: string) {
+  function update(field: ContainerFieldName, value: string) {
     setInput((current) => ({ ...current, [field]: value }));
+    setErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
     setReadyConfig(null);
   }
 
