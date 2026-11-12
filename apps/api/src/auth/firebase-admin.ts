@@ -1,5 +1,6 @@
 import { applicationDefault, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 export const FIREBASE_PROJECT_ID = 'bluesense-347f0';
 
@@ -27,4 +28,8 @@ export function getFirebaseAdminApp(): App {
 
 export function getFirebaseAdminAuth(): Auth {
   return getAuth(getFirebaseAdminApp());
+}
+
+export function getFirebaseAdminFirestore(): Firestore {
+  return getFirestore(getFirebaseAdminApp());
 }
