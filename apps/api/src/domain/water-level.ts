@@ -1,16 +1,4 @@
-/**
- * Cálculos de dominio para convertir una medida física `distanceCm` en altura
- * de agua, porcentaje de nivel y litros estimados.
- *
- * `distanceCm` se mide desde la parte superior del depósito (sensor hacia
- * abajo). La distancia de seguridad es la separación superior mínima desde el
- * sensor, por lo que la altura operativa es `heightCm - safetyDistanceCm`. La
- * altura de agua se clampea a [0, alturaOperativa] y el porcentaje nunca sale
- * de [0, 100]. La capacidad del usuario es un límite superior de litros, nunca
- * un sustituto de la geometría.
- */
-
-const PI = Math.PI;
+/** Converts a calibrated sensor distance into level and estimated volume. */
 
 export type WaterGeometry = 'VERTICAL_CYLINDER' | 'RECTANGULAR';
 
@@ -28,10 +16,10 @@ interface RectangularConfig {
 export type DepositConfig = VerticalCylinderConfig | RectangularConfig;
 
 export interface WaterLevelInput {
-  readonly heightCm: number;
-  readonly safetyDistanceCm: number;
+  readonly emptyDistanceCm: number;
+  readonly fullDistanceCm: number;
   readonly distanceCm: number;
-  readonly capacityLiters: number;
+  readonly capacityLiters: number | null;
   readonly config: DepositConfig;
 }
 
@@ -39,6 +27,7 @@ export interface WaterLevelResult {
   readonly waterHeightCm: number;
   readonly levelPercent: number;
   readonly liters: number;
+  readonly volumeSource: 'nominal-capacity' | 'geometry-estimate';
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -46,68 +35,52 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function validateInput(input: WaterLevelInput): void {
-  const { heightCm, safetyDistanceCm, distanceCm, capacityLiters, config } = input;
-
-  const numericFields: Array<{ name: string; value: unknown }> = [
-    { name: 'heightCm', value: heightCm },
-    { name: 'safetyDistanceCm', value: safetyDistanceCm },
-    { name: 'distanceCm', value: distanceCm },
-    { name: 'capacityLiters', value: capacityLiters },
-  ];
-
-  for (const { name, value } of numericFields) {
-    if (!isFiniteNumber(value)) {
-      throw new Error(`Invalid ${name}: expected a finite number.`);
-    }
+  const { emptyDistanceCm, fullDistanceCm, distanceCm, capacityLiters, config } = input;
+  for (const [name, value] of [
+    ['emptyDistanceCm', emptyDistanceCm],
+    ['fullDistanceCm', fullDistanceCm],
+    ['distanceCm', distanceCm],
+  ] as const) {
+    if (!isFiniteNumber(value)) throw new Error(`Invalid ${name}: expected a finite number.`);
   }
-
-  if (heightCm <= 0) {
-    throw new Error('Invalid heightCm: expected a positive number.');
+  if (emptyDistanceCm <= 0 || fullDistanceCm <= 0) {
+    throw new Error('Invalid calibration: distances must be positive.');
   }
-
-  if (safetyDistanceCm <= 0) {
-    throw new Error('Invalid safetyDistanceCm: expected a positive number.');
+  if (fullDistanceCm >= emptyDistanceCm) {
+    throw new Error('Invalid calibration: fullDistanceCm must be lower than emptyDistanceCm.');
   }
-
-  if (capacityLiters <= 0) {
-    throw new Error('Invalid capacityLiters: expected a positive number.');
+  if (capacityLiters !== null && (!isFiniteNumber(capacityLiters) || capacityLiters <= 0)) {
+    throw new Error('Invalid capacityLiters: expected null or a positive finite number.');
   }
-
-  if (safetyDistanceCm >= heightCm) {
-    throw new Error('Invalid safetyDistanceCm: must be lower than heightCm.');
-  }
-
   if (config.kind === 'VERTICAL_CYLINDER') {
     if (!isFiniteNumber(config.radiusCm) || config.radiusCm <= 0) {
       throw new Error('Invalid radiusCm: expected a positive finite number.');
     }
-    return;
-  }
-
-  if (!isFiniteNumber(config.lengthCm) || config.lengthCm <= 0) {
-    throw new Error('Invalid lengthCm: expected a positive finite number.');
-  }
-
-  if (!isFiniteNumber(config.widthCm) || config.widthCm <= 0) {
-    throw new Error('Invalid widthCm: expected a positive finite number.');
+  } else if (
+    !isFiniteNumber(config.lengthCm) ||
+    config.lengthCm <= 0 ||
+    !isFiniteNumber(config.widthCm) ||
+    config.widthCm <= 0
+  ) {
+    throw new Error('Invalid rectangular dimensions: expected positive finite numbers.');
   }
 }
 
 export function computeWaterLevel(input: WaterLevelInput): WaterLevelResult {
   validateInput(input);
-
-  const { heightCm, safetyDistanceCm, distanceCm, capacityLiters, config } = input;
-
-  const operatingHeightCm = heightCm - safetyDistanceCm;
-  const waterHeightCm = Math.min(Math.max(heightCm - distanceCm, 0), operatingHeightCm);
-  const levelPercent = (waterHeightCm / operatingHeightCm) * 100;
-
-  const volumeCm3 =
+  const { emptyDistanceCm, fullDistanceCm, distanceCm, capacityLiters, config } = input;
+  const calibratedHeightCm = emptyDistanceCm - fullDistanceCm;
+  const waterHeightCm = Math.min(Math.max(emptyDistanceCm - distanceCm, 0), calibratedHeightCm);
+  const levelPercent = (waterHeightCm / calibratedHeightCm) * 100;
+  const geometricLiters =
     config.kind === 'VERTICAL_CYLINDER'
-      ? PI * config.radiusCm * config.radiusCm * waterHeightCm
-      : config.lengthCm * config.widthCm * waterHeightCm;
+      ? (Math.PI * config.radiusCm * config.radiusCm * waterHeightCm) / 1000
+      : (config.lengthCm * config.widthCm * waterHeightCm) / 1000;
 
-  const liters = Math.min(volumeCm3 / 1000, capacityLiters);
-
-  return { waterHeightCm, levelPercent, liters };
+  return {
+    waterHeightCm,
+    levelPercent,
+    liters: capacityLiters === null ? geometricLiters : capacityLiters * (levelPercent / 100),
+    volumeSource: capacityLiters === null ? 'geometry-estimate' : 'nominal-capacity',
+  };
 }

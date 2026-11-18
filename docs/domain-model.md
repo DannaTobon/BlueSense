@@ -44,9 +44,10 @@ ONLINE / OFFLINE.
 ## WaterContainer
 - id
 - type
-- capacityLiters
+- capacityLiters (optional nominal value)
 - heightCm
-- safetyDistanceCm
+- emptyDistanceCm (installed sensor reference at 0%)
+- fullDistanceCm (installed sensor reference at safe 100%)
 - geometry-specific dimensions
 - calibration configuration
 - thresholds
@@ -62,6 +63,8 @@ VERTICAL_CYLINDER, RECTANGULAR.
 - levelPercentage
 - estimatedLiters
 - quality/status when needed
+
+Preliminary processing statuses are `VALID`, `INSUFFICIENT_DATA`, `INVALID_READING`, and `OUT_OF_RANGE`. A valid short window uses its median before level and volume calculation. Liters identify whether their source is nominal capacity or measured geometry.
 
 ## Alert
 - id

@@ -1,24 +1,21 @@
-export interface VerticalCylinderRecord {
+interface WaterContainerRecordBase {
   readonly ownerUid: string;
-  readonly type: 'VERTICAL_CYLINDER';
-  readonly capacityLiters: number;
+  readonly capacityLiters: number | null;
   readonly heightCm: number;
-  readonly safetyDistanceCm: 10;
-  readonly dimensions: {
-    readonly radiusCm: number;
+  readonly calibration: {
+    readonly emptyDistanceCm: number;
+    readonly fullDistanceCm: number;
   };
 }
 
-export interface RectangularRecord {
-  readonly ownerUid: string;
+export interface VerticalCylinderRecord extends WaterContainerRecordBase {
+  readonly type: 'VERTICAL_CYLINDER';
+  readonly dimensions: { readonly radiusCm: number };
+}
+
+export interface RectangularRecord extends WaterContainerRecordBase {
   readonly type: 'RECTANGULAR';
-  readonly capacityLiters: number;
-  readonly heightCm: number;
-  readonly safetyDistanceCm: 10;
-  readonly dimensions: {
-    readonly lengthCm: number;
-    readonly widthCm: number;
-  };
+  readonly dimensions: { readonly lengthCm: number; readonly widthCm: number };
 }
 
 export type WaterContainerRecord = VerticalCylinderRecord | RectangularRecord;

@@ -13,10 +13,10 @@
 ### Deposit
 - Vertical cylindrical deposit.
 - Rectangular/square deposit.
-- Capacity entered by user.
-- Height entered by user.
-- Initial automatic 10 cm safety distance.
-- Calibration/configuration.
+- Nominal capacity entered when known; otherwise volume is estimated from supported measured geometry.
+- Interior height and geometry-specific dimensions entered by user.
+- Preliminary 0–100% calibration from the installed sensor's empty and safe-full distances.
+- Sensor-specific safety/noise thresholds remain subject to hardware validation.
 
 ### Monitoring
 - Ultrasonic distance measurement.

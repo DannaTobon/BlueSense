@@ -1,3 +1,5 @@
+import type { WaterContainerDraft, WaterContainerInput } from '@/types/water-container';
+
 export interface ApiIdentity {
   uid: string;
   email: string | null;
@@ -42,9 +44,22 @@ function isPositiveFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
+function hasValidCalibration(candidate: Record<string, unknown>): boolean {
+  return (
+    isPositiveFiniteNumber(candidate.heightCm) &&
+    isPositiveFiniteNumber(candidate.emptyDistanceCm) &&
+    isPositiveFiniteNumber(candidate.fullDistanceCm) &&
+    candidate.fullDistanceCm < candidate.emptyDistanceCm &&
+    candidate.emptyDistanceCm - candidate.fullDistanceCm <= candidate.heightCm
+  );
+}
+
 function hasExactlyKeys(value: Record<string, unknown>, expectedKeys: string[]): boolean {
   const actualKeys = Object.keys(value).sort();
-  return actualKeys.length === expectedKeys.length && expectedKeys.sort().every((key, index) => key === actualKeys[index]);
+  return (
+    actualKeys.length === expectedKeys.length &&
+    expectedKeys.sort().every((key, index) => key === actualKeys[index])
+  );
 }
 
 function isWaterContainerDraft(value: unknown): value is WaterContainerDraft {
@@ -55,10 +70,8 @@ function isWaterContainerDraft(value: unknown): value is WaterContainerDraft {
   const candidate = value as Record<string, unknown>;
   const commonValid =
     candidate.configurationStatus === 'draft' &&
-    candidate.safetyDistanceCm === 10 &&
-    isPositiveFiniteNumber(candidate.capacityLiters) &&
-    isPositiveFiniteNumber(candidate.heightCm) &&
-    candidate.heightCm > 10;
+    (candidate.capacityLiters === null || isPositiveFiniteNumber(candidate.capacityLiters)) &&
+    hasValidCalibration(candidate);
 
   if (!commonValid) {
     return false;
@@ -71,7 +84,8 @@ function isWaterContainerDraft(value: unknown): value is WaterContainerDraft {
         'geometry',
         'capacityLiters',
         'heightCm',
-        'safetyDistanceCm',
+        'emptyDistanceCm',
+        'fullDistanceCm',
         'radiusCm',
       ]) && isPositiveFiniteNumber(candidate.radiusCm)
     );
@@ -84,7 +98,8 @@ function isWaterContainerDraft(value: unknown): value is WaterContainerDraft {
         'geometry',
         'capacityLiters',
         'heightCm',
-        'safetyDistanceCm',
+        'emptyDistanceCm',
+        'fullDistanceCm',
         'lengthCm',
         'widthCm',
       ]) &&
@@ -248,5 +263,3 @@ export async function fetchCurrentIdentity({
 
   return { status: 'success', identity: body };
 }
-import type { WaterContainerDraft, WaterContainerInput } from '@/types/water-container';
-

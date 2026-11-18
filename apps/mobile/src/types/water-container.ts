@@ -1,8 +1,10 @@
 export type WaterContainerGeometry = 'vertical-cylinder' | 'rectangular';
 
 interface WaterContainerInputBase {
-  capacityLiters: number;
+  capacityLiters: number | null;
   heightCm: number;
+  emptyDistanceCm: number;
+  fullDistanceCm: number;
 }
 
 export interface VerticalCylinderInput extends WaterContainerInputBase {
@@ -20,9 +22,7 @@ export type WaterContainerInput = VerticalCylinderInput | RectangularInput;
 
 interface WaterContainerDraftBase {
   configurationStatus: 'draft';
-  safetyDistanceCm: 10;
 }
 
-export type WaterContainerDraft =
-  | (VerticalCylinderInput & WaterContainerDraftBase)
-  | (RectangularInput & WaterContainerDraftBase);
+export type WaterContainerDraft = (VerticalCylinderInput | RectangularInput) &
+  WaterContainerDraftBase;

@@ -1,8 +1,8 @@
-export const WATER_CONTAINER_SAFETY_DISTANCE_CM = 10;
-
 interface WaterContainerInputBase {
-  readonly capacityLiters: number;
+  readonly capacityLiters: number | null;
   readonly heightCm: number;
+  readonly emptyDistanceCm: number;
+  readonly fullDistanceCm: number;
 }
 
 export interface VerticalCylinderInput extends WaterContainerInputBase {
@@ -20,7 +20,6 @@ export type WaterContainerInput = VerticalCylinderInput | RectangularInput;
 
 interface WaterContainerDraftBase extends WaterContainerInputBase {
   readonly configurationStatus: 'draft';
-  readonly safetyDistanceCm: typeof WATER_CONTAINER_SAFETY_DISTANCE_CM;
 }
 
 export interface VerticalCylinderDraft extends WaterContainerDraftBase {
@@ -37,8 +36,7 @@ export interface RectangularDraft extends WaterContainerDraftBase {
 export type WaterContainerDraft = VerticalCylinderDraft | RectangularDraft;
 
 export type WaterContainerValidationResult =
-  | { readonly valid: true; readonly value: WaterContainerInput }
-  | { readonly valid: false };
+  { readonly valid: true; readonly value: WaterContainerInput } | { readonly valid: false };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -58,19 +56,28 @@ export function validateWaterContainerInput(value: unknown): WaterContainerValid
     return { valid: false };
   }
 
-  const { geometry, capacityLiters, heightCm } = value;
-
+  const { geometry, capacityLiters, heightCm, emptyDistanceCm, fullDistanceCm } = value;
   if (
-    !isPositiveFiniteNumber(capacityLiters) ||
+    (capacityLiters !== null && !isPositiveFiniteNumber(capacityLiters)) ||
     !isPositiveFiniteNumber(heightCm) ||
-    heightCm <= WATER_CONTAINER_SAFETY_DISTANCE_CM
+    !isPositiveFiniteNumber(emptyDistanceCm) ||
+    !isPositiveFiniteNumber(fullDistanceCm) ||
+    fullDistanceCm >= emptyDistanceCm ||
+    emptyDistanceCm - fullDistanceCm > heightCm
   ) {
     return { valid: false };
   }
+  const commonKeys = [
+    'geometry',
+    'capacityLiters',
+    'heightCm',
+    'emptyDistanceCm',
+    'fullDistanceCm',
+  ] as const;
 
   if (geometry === 'vertical-cylinder') {
     if (
-      !hasExactlyKeys(value, ['geometry', 'capacityLiters', 'heightCm', 'radiusCm']) ||
+      !hasExactlyKeys(value, [...commonKeys, 'radiusCm']) ||
       !isPositiveFiniteNumber(value.radiusCm)
     ) {
       return { valid: false };
@@ -78,19 +85,20 @@ export function validateWaterContainerInput(value: unknown): WaterContainerValid
 
     return {
       valid: true,
-      value: { geometry, capacityLiters, heightCm, radiusCm: value.radiusCm },
+      value: {
+        geometry,
+        capacityLiters,
+        heightCm,
+        emptyDistanceCm,
+        fullDistanceCm,
+        radiusCm: value.radiusCm,
+      },
     };
   }
 
   if (geometry === 'rectangular') {
     if (
-      !hasExactlyKeys(value, [
-        'geometry',
-        'capacityLiters',
-        'heightCm',
-        'lengthCm',
-        'widthCm',
-      ]) ||
+      !hasExactlyKeys(value, [...commonKeys, 'lengthCm', 'widthCm']) ||
       !isPositiveFiniteNumber(value.lengthCm) ||
       !isPositiveFiniteNumber(value.widthCm)
     ) {
@@ -103,6 +111,8 @@ export function validateWaterContainerInput(value: unknown): WaterContainerValid
         geometry,
         capacityLiters,
         heightCm,
+        emptyDistanceCm,
+        fullDistanceCm,
         lengthCm: value.lengthCm,
         widthCm: value.widthCm,
       },

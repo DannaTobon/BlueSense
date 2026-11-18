@@ -1,8 +1,4 @@
-import {
-  WATER_CONTAINER_SAFETY_DISTANCE_CM,
-  type WaterContainerDraft,
-  type WaterContainerInput,
-} from '../domain/water-container.js';
+import type { WaterContainerDraft, WaterContainerInput } from '../domain/water-container.js';
 import type {
   WaterContainerRecord,
   WaterContainerRepository,
@@ -20,22 +16,19 @@ function toRecord(ownerUid: string, input: WaterContainerInput): WaterContainerR
     ownerUid,
     capacityLiters: input.capacityLiters,
     heightCm: input.heightCm,
-    safetyDistanceCm: WATER_CONTAINER_SAFETY_DISTANCE_CM,
+    calibration: {
+      emptyDistanceCm: input.emptyDistanceCm,
+      fullDistanceCm: input.fullDistanceCm,
+    },
   } as const;
 
-  if (input.geometry === 'vertical-cylinder') {
-    return {
-      ...base,
-      type: 'VERTICAL_CYLINDER',
-      dimensions: { radiusCm: input.radiusCm },
-    };
-  }
-
-  return {
-    ...base,
-    type: 'RECTANGULAR',
-    dimensions: { lengthCm: input.lengthCm, widthCm: input.widthCm },
-  };
+  return input.geometry === 'vertical-cylinder'
+    ? { ...base, type: 'VERTICAL_CYLINDER', dimensions: { radiusCm: input.radiusCm } }
+    : {
+        ...base,
+        type: 'RECTANGULAR',
+        dimensions: { lengthCm: input.lengthCm, widthCm: input.widthCm },
+      };
 }
 
 function toDraft(record: WaterContainerRecord): WaterContainerDraft {
@@ -43,23 +36,18 @@ function toDraft(record: WaterContainerRecord): WaterContainerDraft {
     configurationStatus: 'draft',
     capacityLiters: record.capacityLiters,
     heightCm: record.heightCm,
-    safetyDistanceCm: WATER_CONTAINER_SAFETY_DISTANCE_CM,
+    emptyDistanceCm: record.calibration.emptyDistanceCm,
+    fullDistanceCm: record.calibration.fullDistanceCm,
   } as const;
 
-  if (record.type === 'VERTICAL_CYLINDER') {
-    return {
-      ...base,
-      geometry: 'vertical-cylinder',
-      radiusCm: record.dimensions.radiusCm,
-    };
-  }
-
-  return {
-    ...base,
-    geometry: 'rectangular',
-    lengthCm: record.dimensions.lengthCm,
-    widthCm: record.dimensions.widthCm,
-  };
+  return record.type === 'VERTICAL_CYLINDER'
+    ? { ...base, geometry: 'vertical-cylinder', radiusCm: record.dimensions.radiusCm }
+    : {
+        ...base,
+        geometry: 'rectangular',
+        lengthCm: record.dimensions.lengthCm,
+        widthCm: record.dimensions.widthCm,
+      };
 }
 
 export interface WaterContainerService {
@@ -73,14 +61,9 @@ export function createWaterContainerService(
   return {
     async getDraft(ownerUid) {
       const record = await repository.findByOwnerUid(ownerUid);
-
-      if (!record) {
-        throw new WaterContainerNotFoundError();
-      }
-
+      if (!record) throw new WaterContainerNotFoundError();
       return toDraft(record);
     },
-
     async saveDraft(ownerUid, input) {
       const record = toRecord(ownerUid, input);
       await repository.save(record);

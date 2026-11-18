@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { fetchCurrentIdentity } from '../src/services/api-client';
+import {
+  fetchCurrentIdentity,
+  fetchWaterContainer,
+  saveWaterContainer,
+} from '../src/services/api-client';
 
 function asFetch(
   implementation: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
@@ -117,5 +121,74 @@ void test('aborted requests surface the abort instead of a network error', async
       fetchImpl,
     }),
     /aborted/,
+  );
+});
+
+void test('GET /water-container treats 404 as an empty configuration', async () => {
+  const fetchImpl = asFetch(async () => new Response(null, { status: 404 }));
+  assert.deepEqual(
+    await fetchWaterContainer({
+      baseUrl: 'http://localhost:3000',
+      token: 'token',
+      fetchImpl,
+    }),
+    { status: 'not-found' },
+  );
+});
+
+void test('PUT /water-container sends and validates calibrated input', async () => {
+  const input = {
+    geometry: 'rectangular' as const,
+    capacityLiters: null,
+    heightCm: 150,
+    emptyDistanceCm: 145,
+    fullDistanceCm: 10,
+    lengthCm: 100,
+    widthCm: 80,
+  };
+  let receivedBody: unknown;
+  const fetchImpl = asFetch(async (_url, init) => {
+    receivedBody = JSON.parse(String(init?.body)) as unknown;
+    return new Response(JSON.stringify({ configurationStatus: 'draft', ...input }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+  const result = await saveWaterContainer({
+    baseUrl: 'http://localhost:3000',
+    token: 'token',
+    input,
+    fetchImpl,
+  });
+  assert.deepEqual(receivedBody, input);
+  assert.deepEqual(result, {
+    status: 'success',
+    draft: { configurationStatus: 'draft', ...input },
+  });
+});
+
+void test('rejects an inconsistent calibrated response', async () => {
+  const fetchImpl = asFetch(
+    async () =>
+      new Response(
+        JSON.stringify({
+          configurationStatus: 'draft',
+          geometry: 'vertical-cylinder',
+          capacityLiters: 1100,
+          heightCm: 150,
+          emptyDistanceCm: 10,
+          fullDistanceCm: 145,
+          radiusCm: 50,
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+  );
+  assert.deepEqual(
+    await fetchWaterContainer({
+      baseUrl: 'http://localhost:3000',
+      token: 'token',
+      fetchImpl,
+    }),
+    { status: 'invalid-response' },
   );
 });

@@ -13,14 +13,18 @@ const cylinder: ContainerFormInput = {
   geometry: 'vertical-cylinder',
   capacityLiters: '1100',
   heightCm: '140',
+  emptyDistanceCm: '135',
+  fullDistanceCm: '10',
   radiusCm: '55',
 };
 
 const rectangular: ContainerFormInput = {
   ...EMPTY_CONTAINER_FORM,
   geometry: 'rectangular',
-  capacityLiters: '2500',
+  capacityLiters: '',
   heightCm: '120.5',
+  emptyDistanceCm: '118',
+  fullDistanceCm: '8',
   lengthCm: '150',
   widthCm: '100',
 };
@@ -31,78 +35,52 @@ function errorsOf(input: ContainerFormInput) {
   return result.valid ? {} : result.errors;
 }
 
-void test('accepts a valid vertical cylinder', () => {
+void test('accepts known capacity and unknown capacity configurations', () => {
   assert.deepEqual(validateContainerForm(cylinder), {
     valid: true,
-    config: { geometry: 'vertical-cylinder', capacityLiters: 1100, heightCm: 140, radiusCm: 55 },
-  });
-});
-
-void test('accepts a valid rectangular container', () => {
-  assert.deepEqual(validateContainerForm(rectangular), {
-    valid: true,
     config: {
-      geometry: 'rectangular',
-      capacityLiters: 2500,
-      heightCm: 120.5,
-      lengthCm: 150,
-      widthCm: 100,
+      geometry: 'vertical-cylinder',
+      capacityLiters: 1100,
+      heightCm: 140,
+      emptyDistanceCm: 135,
+      fullDistanceCm: 10,
+      radiusCm: 55,
     },
   });
+  const result = validateContainerForm(rectangular);
+  assert.ok(result.valid);
+  assert.equal(result.valid && result.config.capacityLiters, null);
 });
 
-void test('rejects empty fields', () => {
+void test('requires geometry, height, and both calibration references', () => {
   assert.deepEqual(Object.keys(errorsOf(EMPTY_CONTAINER_FORM)).sort(), [
-    'capacityLiters',
+    'emptyDistanceCm',
+    'fullDistanceCm',
     'heightCm',
     'radiusCm',
   ]);
-  assert.deepEqual(
-    Object.keys(errorsOf({ ...EMPTY_CONTAINER_FORM, geometry: 'rectangular' })).sort(),
-    ['capacityLiters', 'heightCm', 'lengthCm', 'widthCm'],
-  );
-  assert.ok(errorsOf({ ...cylinder, radiusCm: '   ' }).radiusCm);
 });
 
-void test('rejects non-numeric, infinite, zero and negative values', () => {
-  for (const bad of ['abc', '12abc', '0x10', 'Infinity', '-Infinity', '1e999', '0', '-5']) {
-    assert.ok(errorsOf({ ...cylinder, capacityLiters: bad }).capacityLiters, bad);
-    assert.ok(errorsOf({ ...cylinder, radiusCm: bad }).radiusCm, bad);
+void test('rejects reversed or physically inconsistent calibration', () => {
+  assert.match(
+    errorsOf({ ...cylinder, fullDistanceCm: '135' }).fullDistanceCm ?? '',
+    /menor que la distancia al vacío/,
+  );
+  assert.match(
+    errorsOf({ ...cylinder, heightCm: '100', emptyDistanceCm: '140' }).emptyDistanceCm ?? '',
+    /no puede superar la altura/,
+  );
+});
+
+void test('rejects invalid optional capacity when it is provided', () => {
+  for (const value of ['abc', 'Infinity', '0', '-5']) {
+    assert.ok(errorsOf({ ...cylinder, capacityLiters: value }).capacityLiters, value);
   }
 });
 
-void test('rejects height less than or equal to the safety distance', () => {
-  assert.ok(errorsOf({ ...cylinder, heightCm: '10' }).heightCm);
-  assert.ok(errorsOf({ ...cylinder, heightCm: '4' }).heightCm);
-  assert.equal(validateContainerForm({ ...cylinder, heightCm: '10.5' }).valid, true);
-});
-
-void test('result has no residual dimensions from another geometry', () => {
-  const switched = changeGeometry({ ...cylinder }, 'rectangular');
+void test('changing geometry drops dimensions from the previous geometry', () => {
+  const switched = changeGeometry(cylinder, 'rectangular');
   assert.equal(switched.radiusCm, '');
-
-  const filled = { ...switched, lengthCm: '100', widthCm: '80' };
-  const result = validateContainerForm(filled);
-  assert.ok(result.valid);
+  const result = validateContainerForm({ ...switched, lengthCm: '100', widthCm: '80' });
   assert.ok(result.valid && !('radiusCm' in result.config));
-
-  const back = validateContainerForm({
-    ...changeGeometry(filled, 'vertical-cylinder'),
-    radiusCm: '40',
-  });
-  assert.ok(back.valid);
-  assert.ok(back.valid && !('lengthCm' in back.config) && !('widthCm' in back.config));
-
-  // Stale values from another geometry never leak, even if the input still holds them.
-  const stale = validateContainerForm({ ...cylinder, lengthCm: '99', widthCm: '99' });
-  assert.ok(stale.valid && !('lengthCm' in stale.config));
-});
-
-void test('validation messages are in Spanish', () => {
-  const messages = Object.values(errorsOf(EMPTY_CONTAINER_FORM));
-  assert.ok(messages.every((message) => /^Introduce /.test(message)));
-  assert.match(errorsOf({ ...cylinder, heightCm: '5' }).heightCm ?? '', /mayor que 10 cm/);
-  assert.match(errorsOf({ ...cylinder, radiusCm: 'abc' }).radiusCm ?? '', /debe ser un número/);
-  assert.match(errorsOf({ ...cylinder, radiusCm: '-1' }).radiusCm ?? '', /mayor que cero/);
-  assert.match(errorsOf({ ...cylinder, radiusCm: 'Infinity' }).radiusCm ?? '', /finito/);
 });

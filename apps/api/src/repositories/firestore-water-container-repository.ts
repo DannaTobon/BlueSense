@@ -14,9 +14,9 @@ const COLLECTION_NAME = 'waterContainerDrafts';
 interface FirestoreWaterContainerDocument {
   readonly ownerUid: string;
   readonly type: 'VERTICAL_CYLINDER' | 'RECTANGULAR';
-  readonly capacityLiters: number;
+  readonly capacityLiters: number | null;
   readonly heightCm: number;
-  readonly safetyDistanceCm: 10;
+  readonly calibration: { readonly emptyDistanceCm: number; readonly fullDistanceCm: number };
   readonly dimensions: Record<string, number>;
   readonly updatedAt: FieldValue;
 }
@@ -37,7 +37,7 @@ export function toFirestoreWaterContainerDocument(
     type: record.type,
     capacityLiters: record.capacityLiters,
     heightCm: record.heightCm,
-    safetyDistanceCm: record.safetyDistanceCm,
+    calibration: { ...record.calibration },
     dimensions: { ...record.dimensions },
     updatedAt: FieldValue.serverTimestamp(),
   };
@@ -47,34 +47,39 @@ export function fromFirestoreWaterContainerDocument(
   value: unknown,
   expectedOwnerUid: string,
 ): WaterContainerRecord {
-  if (!isRecord(value) || !isRecord(value.dimensions)) {
+  if (!isRecord(value) || !isRecord(value.dimensions) || !isRecord(value.calibration)) {
     throw new WaterContainerDataIntegrityError();
   }
 
-  const { ownerUid, type, capacityLiters, heightCm, safetyDistanceCm, dimensions } = value;
+  const { ownerUid, type, capacityLiters, heightCm, calibration, dimensions } = value;
+  const emptyDistanceCm = calibration.emptyDistanceCm;
+  const fullDistanceCm = calibration.fullDistanceCm;
 
   if (
     ownerUid !== expectedOwnerUid ||
-    !isPositiveFiniteNumber(capacityLiters) ||
+    (capacityLiters !== null && !isPositiveFiniteNumber(capacityLiters)) ||
     !isPositiveFiniteNumber(heightCm) ||
-    safetyDistanceCm !== 10
+    !isPositiveFiniteNumber(emptyDistanceCm) ||
+    !isPositiveFiniteNumber(fullDistanceCm) ||
+    fullDistanceCm >= emptyDistanceCm ||
+    emptyDistanceCm - fullDistanceCm > heightCm
   ) {
     throw new WaterContainerDataIntegrityError();
   }
+
+  const base = {
+    ownerUid,
+    capacityLiters,
+    heightCm,
+    calibration: { emptyDistanceCm, fullDistanceCm },
+  } as const;
 
   if (
     type === 'VERTICAL_CYLINDER' &&
     Object.keys(dimensions).length === 1 &&
     isPositiveFiniteNumber(dimensions.radiusCm)
   ) {
-    return {
-      ownerUid,
-      type,
-      capacityLiters,
-      heightCm,
-      safetyDistanceCm,
-      dimensions: { radiusCm: dimensions.radiusCm },
-    };
+    return { ...base, type, dimensions: { radiusCm: dimensions.radiusCm } };
   }
 
   if (
@@ -84,11 +89,8 @@ export function fromFirestoreWaterContainerDocument(
     isPositiveFiniteNumber(dimensions.widthCm)
   ) {
     return {
-      ownerUid,
+      ...base,
       type,
-      capacityLiters,
-      heightCm,
-      safetyDistanceCm,
       dimensions: { lengthCm: dimensions.lengthCm, widthCm: dimensions.widthCm },
     };
   }
@@ -102,12 +104,9 @@ export class FirestoreWaterContainerRepository implements WaterContainerReposito
   async findByOwnerUid(ownerUid: string): Promise<WaterContainerRecord | null> {
     try {
       const snapshot = await this.getFirestore().collection(COLLECTION_NAME).doc(ownerUid).get();
-
-      if (!snapshot.exists) {
-        return null;
-      }
-
-      return fromFirestoreWaterContainerDocument(snapshot.data(), ownerUid);
+      return snapshot.exists
+        ? fromFirestoreWaterContainerDocument(snapshot.data(), ownerUid)
+        : null;
     } catch (error: unknown) {
       if (error instanceof WaterContainerDataIntegrityError) {
         throw error;

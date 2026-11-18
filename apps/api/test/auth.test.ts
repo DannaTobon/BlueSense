@@ -150,8 +150,11 @@ void test('CORS allows configured web origins without weakening authentication',
 
       assert.equal(preflight.status, 204);
       assert.equal(preflight.headers.get('access-control-allow-origin'), allowedOrigin);
-      assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET');
-      assert.equal(preflight.headers.get('access-control-allow-headers'), 'Authorization');
+      assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET, PUT');
+      assert.equal(
+        preflight.headers.get('access-control-allow-headers'),
+        'Authorization, Content-Type',
+      );
       assert.equal(preflight.headers.get('access-control-allow-credentials'), null);
 
       const unauthorized = await fetch(`${baseUrl}/me`, { headers: { Origin: allowedOrigin } });
