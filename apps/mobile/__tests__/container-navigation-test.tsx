@@ -1,40 +1,42 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
-import { Text } from 'react-native';
+import { render } from '@testing-library/react-native';
+import type { PropsWithChildren } from 'react';
 
-import AppLayout from '@/app/(app)/_layout';
+import AppTabs from '@/components/app-tabs';
 
-jest.mock('@/components/app-tabs', () => {
+jest.mock('expo-router/native-tabs', () => {
   const React = require('react');
-  const { Slot } = require('expo-router');
+  const { View } = require('react-native');
 
-  return {
-    __esModule: true,
-    default: function MockAppTabs() {
-      return React.createElement(Slot);
+  const Trigger = Object.assign(
+    ({ children, name }: PropsWithChildren<{ name: string }>) =>
+      React.createElement(View, { testID: `native-tab-${name}` }, children),
+    {
+      Label({ children }: PropsWithChildren) {
+        const { Text } = require('react-native');
+        return React.createElement(Text, null, children);
+      },
+      Icon() {
+        return null;
+      },
     },
-  };
+  );
+
+  const NativeTabs = Object.assign(
+    ({ children }: PropsWithChildren) => React.createElement(React.Fragment, null, children),
+    { Trigger },
+  );
+
+  return { NativeTabs };
 });
 
-const routes = {
-  '(app)/_layout': AppLayout,
-  '(app)/index': () => <Text>Pantalla de inicio</Text>,
-  '(app)/explore': () => <Text>Pantalla de estado</Text>,
-  '(app)/container': () => <Text>Pantalla de configuración</Text>,
-};
-
 describe('water container navigation', () => {
-  test('opens the container route and returns through the layout link', async () => {
-    await renderRouter(routes, { initialUrl: '/' });
+  test('exposes the container route in native tabs', async () => {
+    const tabs = await render(<AppTabs />);
 
-    await fireEvent.press(screen.getByLabelText('Configurar depósito'));
-
-    await waitFor(() => expect(screen).toHavePathname('/container'));
-    expect(screen.getByText('Pantalla de configuración')).toBeOnTheScreen();
-
-    await fireEvent.press(screen.getByLabelText('Volver al inicio'));
-
-    await waitFor(() => expect(screen).toHavePathname('/'));
-    expect(screen.getByText('Pantalla de inicio')).toBeOnTheScreen();
+    expect(tabs.getByTestId('native-tab-index')).toBeOnTheScreen();
+    expect(tabs.getByTestId('native-tab-explore')).toBeOnTheScreen();
+    expect(tabs.getByTestId('native-tab-history')).toBeOnTheScreen();
+    expect(tabs.getByTestId('native-tab-container')).toBeOnTheScreen();
+    expect(tabs.getByText('Depósito')).toBeOnTheScreen();
   });
 });

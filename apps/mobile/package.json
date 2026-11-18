@@ -64,6 +64,7 @@
       "<rootDir>/jest.setup.ts"
     ],
     "moduleNameMapper": {
+      "\\.(png)$": "<rootDir>/test/style-mock.cjs",
       "\\.css$": "<rootDir>/test/style-mock.cjs"
     },
     "testMatch": [

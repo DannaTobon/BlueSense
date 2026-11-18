@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WaterContainerForm } from '@/components/water-container-form';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function ContainerScreen() {
   return (
@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
+    paddingTop: Spacing.five,
+    paddingBottom: BottomTabInset + Spacing.four,
   },
 });
