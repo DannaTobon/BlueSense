@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Root lint, typecheck, format:check and doctor target the mobile workspace only.
+      - name: Mobile lint
+        run: npm run lint
+
+      - name: Mobile typecheck
+        run: npm run typecheck
+
+      - name: Mobile format check
+        run: npm run format:check
+
+      - name: Mobile Expo doctor
+        run: npm run doctor
+
+      # The api:* scripts target the API workspace only.
+      - name: API lint
+        run: npm run api:lint
+
+      - name: API typecheck
+        run: npm run api:typecheck
+
+      - name: API format check
+        run: npm run api:format:check
+
+      - name: API build
+        run: npm run api:build
+
+      # npm test runs the test script of every workspace (mobile unit + Jest, then API).
+      - name: Tests
+        run: npm test

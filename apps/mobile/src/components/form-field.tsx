@@ -10,14 +10,22 @@ export type FormFieldProps = TextInputProps & {
   error?: string | undefined;
 };
 
-export function FormField({ label, error, style, ...inputProps }: FormFieldProps) {
+export function FormField({
+  label,
+  error,
+  style,
+  accessibilityHint,
+  accessibilityLabel,
+  ...inputProps
+}: FormFieldProps) {
   const theme = useTheme();
 
   return (
     <View style={styles.container}>
       <ThemedText type="smallBold">{label}</ThemedText>
       <TextInput
-        accessibilityLabel={label}
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityHint={error ? `Error: ${error}` : accessibilityHint}
         placeholderTextColor={theme.textSecondary}
         style={[
           styles.input,
@@ -31,7 +39,12 @@ export function FormField({ label, error, style, ...inputProps }: FormFieldProps
         {...inputProps}
       />
       {error ? (
-        <ThemedText type="small" style={{ color: theme.danger }}>
+        <ThemedText
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          type="small"
+          style={{ color: theme.danger }}
+        >
           {error}
         </ThemedText>
       ) : null}
