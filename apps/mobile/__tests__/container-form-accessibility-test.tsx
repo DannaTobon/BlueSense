@@ -63,4 +63,27 @@ describe('water container form accessibility', () => {
       widthCm: 80,
     });
   });
+
+  test('locks every field and geometry option while saving', async () => {
+    const onSave = jest.fn();
+    const onEdit = jest.fn();
+    const view = await render(
+      <WaterContainerForm {...defaultProps} isSaving onSave={onSave} onEdit={onEdit} />,
+    );
+
+    const capacityField = view.getByLabelText('Capacidad nominal (litros, opcional)');
+    expect(capacityField).toHaveProp('editable', false);
+    await fireEvent.changeText(capacityField, '1200');
+    expect(capacityField).toHaveProp('value', '');
+
+    const rectangularOption = view.getByRole('radio', { name: 'Rectangular o cuadrado' });
+    expect(rectangularOption).toBeDisabled();
+    await fireEvent.press(rectangularOption);
+
+    expect(view.getByLabelText('Radio interior (cm)')).toBeOnTheScreen();
+    expect(view.queryByLabelText('Largo interior (cm)')).not.toBeOnTheScreen();
+    expect(view.getByRole('button', { name: 'Guardar configuración' })).toBeDisabled();
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });

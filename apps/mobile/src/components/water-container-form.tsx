@@ -44,6 +44,8 @@ export function WaterContainerForm({
   const [errors, setErrors] = useState<ContainerFieldErrors>({});
 
   function update(field: ContainerFieldName, value: string) {
+    if (isSaving) return;
+
     setInput((current) => ({ ...current, [field]: value }));
     setErrors((current) => {
       if (!current[field]) return current;
@@ -55,12 +57,16 @@ export function WaterContainerForm({
   }
 
   function selectGeometry(geometry: ContainerGeometry) {
+    if (isSaving) return;
+
     setInput((current) => changeGeometry(current, geometry));
     setErrors({});
     onEdit();
   }
 
   function submit() {
+    if (isSaving) return;
+
     const result = validateContainerForm(input);
     if (result.valid) {
       setErrors({});
@@ -81,13 +87,15 @@ export function WaterContainerForm({
               key={geometry}
               accessibilityRole="radio"
               accessibilityLabel={GEOMETRY_LABELS[geometry]}
-              accessibilityState={{ selected, checked: selected }}
+              accessibilityState={{ selected, checked: selected, disabled: isSaving }}
+              disabled={isSaving}
               onPress={() => selectGeometry(geometry)}
               style={[
                 styles.option,
                 {
                   backgroundColor: theme.backgroundElement,
                   borderColor: selected ? theme.text : theme.backgroundSelected,
+                  opacity: isSaving ? 0.5 : 1,
                 },
               ]}
             >
@@ -104,6 +112,7 @@ export function WaterContainerForm({
         label="Capacidad nominal (litros, opcional)"
         keyboardType="decimal-pad"
         value={input.capacityLiters}
+        editable={!isSaving}
         onChangeText={(value) => update('capacityLiters', value)}
         error={errors.capacityLiters}
       />
@@ -111,6 +120,7 @@ export function WaterContainerForm({
         label="Altura interior (cm)"
         keyboardType="decimal-pad"
         value={input.heightCm}
+        editable={!isSaving}
         onChangeText={(value) => update('heightCm', value)}
         error={errors.heightCm}
       />
@@ -120,6 +130,7 @@ export function WaterContainerForm({
           label="Radio interior (cm)"
           keyboardType="decimal-pad"
           value={input.radiusCm}
+          editable={!isSaving}
           onChangeText={(value) => update('radiusCm', value)}
           error={errors.radiusCm}
         />
@@ -129,6 +140,7 @@ export function WaterContainerForm({
             label="Largo interior (cm)"
             keyboardType="decimal-pad"
             value={input.lengthCm}
+            editable={!isSaving}
             onChangeText={(value) => update('lengthCm', value)}
             error={errors.lengthCm}
           />
@@ -136,6 +148,7 @@ export function WaterContainerForm({
             label="Ancho interior (cm)"
             keyboardType="decimal-pad"
             value={input.widthCm}
+            editable={!isSaving}
             onChangeText={(value) => update('widthCm', value)}
             error={errors.widthCm}
           />
@@ -151,6 +164,7 @@ export function WaterContainerForm({
         label="Distancia al vacío, 0 % (cm)"
         keyboardType="decimal-pad"
         value={input.emptyDistanceCm}
+        editable={!isSaving}
         onChangeText={(value) => update('emptyDistanceCm', value)}
         error={errors.emptyDistanceCm}
       />
@@ -158,6 +172,7 @@ export function WaterContainerForm({
         label="Distancia al lleno seguro, 100 % (cm)"
         keyboardType="decimal-pad"
         value={input.fullDistanceCm}
+        editable={!isSaving}
         onChangeText={(value) => update('fullDistanceCm', value)}
         error={errors.fullDistanceCm}
       />

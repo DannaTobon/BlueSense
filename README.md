@@ -65,7 +65,9 @@ El flujo completo, el contrato de `GET /me`, la persistencia de sesión, las lim
 
 ## Backend API
 
-La base de `apps/api/` incluye un servidor Express ejecutable, TypeScript estricto, configuración validada de puerto, `GET /health`, verificación de ID tokens de Firebase Authentication y `GET /me`. No incluye todavía Firestore, perfiles ni funcionalidades de negocio.
+La base de `apps/api/` incluye un servidor Express ejecutable, TypeScript estricto, configuración validada de puerto, `GET /health`, verificación de ID tokens de Firebase Authentication y `GET /me`. La configuración calibrada del depósito ya puede guardarse y recuperarse mediante `GET/PUT /water-container`; el backend autoriza cada solicitud con el ID token y persiste el borrador por cuenta en Firestore.
+
+El dominio también contiene un procesamiento preliminar y probado para ventanas simuladas de mediciones: valida muestras, exige un mínimo, estabiliza con la mediana y calcula nivel y litros dentro del rango calibrado. Todavía faltan el endpoint de telemetría del ESP32, las lecturas de hardware reales y la conexión del historial, las alertas y las recomendaciones con datos persistidos.
 
 Comandos desde la raíz:
 

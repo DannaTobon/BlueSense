@@ -10,7 +10,7 @@ El backend obtiene el propietario exclusivamente del Firebase ID token. Firestor
 
 El dominio también incluye un pipeline puro para ventanas simuladas: descarta valores no finitos o no positivos, exige un mínimo de muestras, usa la mediana y rechaza resultados fuera del rango calibrado. Todavía no existe endpoint de telemetría ni umbrales específicos del sensor real.
 
-Base ejecutable del backend de BlueSense con Node.js, Express y TypeScript. Expone salud del proceso, verificación de ID tokens de Firebase Authentication y `GET /me`. No contiene todavía lógica de negocio, Firestore ni perfiles de usuario.
+Base ejecutable del backend de BlueSense con Node.js, Express y TypeScript. Expone salud del proceso, verificación de ID tokens de Firebase Authentication, `GET /me` y la persistencia autenticada de la configuración calibrada del depósito.
 
 ## Requisitos
 
@@ -176,7 +176,7 @@ No existe un endpoint público para provocar errores. El comportamiento 500 se v
 
 ## Pendiente
 
-Esta base todavía no implementa autorización por recurso, usuarios o perfiles, depósitos, dispositivos, telemetría, historial, alertas, cálculos de negocio ni Firestore. Esas capacidades requieren bloques de implementación posteriores.
+La configuración del depósito ya cuenta con autorización por cuenta y persistencia en Firestore, y el procesamiento preliminar de mediciones ya existe como lógica de dominio pura. Todavía no se implementan el endpoint de telemetría del ESP32, la recepción de lecturas reales, los dispositivos y su aprovisionamiento, ni el historial, las alertas y las recomendaciones conectados con datos persistidos.
 
 ## Pruebas
 
