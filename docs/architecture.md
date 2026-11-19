@@ -64,6 +64,20 @@ Example:
 ```
 The backend validates the measurement, applies calibration/configuration, calculates level and volume, analyzes it, and persists the result.
 
+The preliminary processing path is testable without hardware:
+
+```text
+distance samples
+  -> finite/positive validation
+  -> minimum sample check
+  -> median stabilization
+  -> calibrated range check
+  -> level percentage
+  -> estimated liters
+```
+
+The installed sensor is calibrated with the measured distances at empty (0%) and safe full (100%). No ESP32 endpoint or sensor-specific noise threshold is introduced in this work block.
+
 ## Online/offline
 The backend updates `lastSeenAt` on valid communication and derives ONLINE/OFFLINE from the expected telemetry interval.
 

@@ -1,7 +1,10 @@
-export type ContainerGeometry = 'vertical-cylinder' | 'rectangular';
+import type {
+  WaterContainerDraft,
+  WaterContainerGeometry,
+  WaterContainerInput,
+} from '@/types/water-container';
 
-/** Safety distance applied by the system in the MVP; not entered by the user. */
-export const SAFETY_DISTANCE_CM = 10;
+export type ContainerGeometry = WaterContainerGeometry;
 
 export const GEOMETRY_LABELS: Record<ContainerGeometry, string> = {
   'vertical-cylinder': 'Cilindro vertical',
@@ -12,34 +15,24 @@ export interface ContainerFormInput {
   geometry: ContainerGeometry;
   capacityLiters: string;
   heightCm: string;
+  emptyDistanceCm: string;
+  fullDistanceCm: string;
   radiusCm: string;
   lengthCm: string;
   widthCm: string;
 }
 
 export type ContainerFieldName =
-  'capacityLiters' | 'heightCm' | 'radiusCm' | 'lengthCm' | 'widthCm';
+  | 'capacityLiters'
+  | 'heightCm'
+  | 'emptyDistanceCm'
+  | 'fullDistanceCm'
+  | 'radiusCm'
+  | 'lengthCm'
+  | 'widthCm';
 
 export type ContainerFieldErrors = Partial<Record<ContainerFieldName, string>>;
-
-interface ContainerConfigBase {
-  capacityLiters: number;
-  heightCm: number;
-}
-
-export interface VerticalCylinderConfig extends ContainerConfigBase {
-  geometry: 'vertical-cylinder';
-  radiusCm: number;
-}
-
-export interface RectangularConfig extends ContainerConfigBase {
-  geometry: 'rectangular';
-  lengthCm: number;
-  widthCm: number;
-}
-
-export type ContainerConfig = VerticalCylinderConfig | RectangularConfig;
-
+export type ContainerConfig = WaterContainerInput;
 export type ContainerValidationResult =
   { valid: true; config: ContainerConfig } | { valid: false; errors: ContainerFieldErrors };
 
@@ -47,35 +40,53 @@ export const EMPTY_CONTAINER_FORM: ContainerFormInput = {
   geometry: 'vertical-cylinder',
   capacityLiters: '',
   heightCm: '',
+  emptyDistanceCm: '',
+  fullDistanceCm: '',
   radiusCm: '',
   lengthCm: '',
   widthCm: '',
 };
 
+export function containerDraftToFormInput(draft: WaterContainerDraft): ContainerFormInput {
+  const base = {
+    geometry: draft.geometry,
+    capacityLiters: draft.capacityLiters === null ? '' : String(draft.capacityLiters),
+    heightCm: String(draft.heightCm),
+    emptyDistanceCm: String(draft.emptyDistanceCm),
+    fullDistanceCm: String(draft.fullDistanceCm),
+  };
+
+  return draft.geometry === 'vertical-cylinder'
+    ? {
+        ...base,
+        radiusCm: String(draft.radiusCm),
+        lengthCm: '',
+        widthCm: '',
+      }
+    : {
+        ...base,
+        radiusCm: '',
+        lengthCm: String(draft.lengthCm),
+        widthCm: String(draft.widthCm),
+      };
+}
+
 type ParsedNumber = { ok: true; value: number } | { ok: false; error: string };
 
 function parsePositive(raw: string, fieldLabel: string): ParsedNumber {
   const text = raw.trim().replace(',', '.');
+  if (text === '') return { ok: false, error: `Introduce ${fieldLabel}.` };
 
-  if (text === '') {
-    return { ok: false, error: `Introduce ${fieldLabel}.` };
-  }
-
-  // Number('') and Number(' ') are 0, so emptiness is handled above; reject hex/exponent-free junk.
   const value = Number(text);
-
-  if (!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(text) && !/^[+-]?infinity$/i.test(text)) {
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(text)) {
     return { ok: false, error: `${capitalize(fieldLabel)} debe ser un número.` };
   }
-
   if (!Number.isFinite(value)) {
     return { ok: false, error: `${capitalize(fieldLabel)} debe ser un número finito.` };
   }
-
   if (value <= 0) {
     return { ok: false, error: `${capitalize(fieldLabel)} debe ser mayor que cero.` };
   }
-
   return { ok: true, value };
 }
 
@@ -83,74 +94,79 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** Drops fields that belong only to a geometry other than the selected one. */
 export function changeGeometry(
   input: ContainerFormInput,
   geometry: ContainerGeometry,
 ): ContainerFormInput {
-  if (geometry === input.geometry) {
-    return input;
-  }
-
-  return {
-    ...input,
-    geometry,
-    radiusCm: '',
-    lengthCm: '',
-    widthCm: '',
-  };
+  if (geometry === input.geometry) return input;
+  return { ...input, geometry, radiusCm: '', lengthCm: '', widthCm: '' };
 }
 
 export function validateContainerForm(input: ContainerFormInput): ContainerValidationResult {
   const errors: ContainerFieldErrors = {};
+  const capacityText = input.capacityLiters.trim();
+  const capacity = capacityText === '' ? null : parsePositive(input.capacityLiters, 'la capacidad');
+  let capacityValue: number | null = null;
+  const height = parsePositive(input.heightCm, 'la altura interior en centímetros');
+  const emptyDistance = parsePositive(
+    input.emptyDistanceCm,
+    'la distancia del sensor al nivel vacío',
+  );
+  const fullDistance = parsePositive(
+    input.fullDistanceCm,
+    'la distancia del sensor al nivel lleno',
+  );
 
-  const capacity = parsePositive(input.capacityLiters, 'la capacidad en litros');
-  if (!capacity.ok) {
-    errors.capacityLiters = capacity.error;
+  if (capacity !== null) {
+    if (capacity.ok) capacityValue = capacity.value;
+    else errors.capacityLiters = capacity.error;
+  }
+  if (!height.ok) errors.heightCm = height.error;
+  if (!emptyDistance.ok) errors.emptyDistanceCm = emptyDistance.error;
+  if (!fullDistance.ok) errors.fullDistanceCm = fullDistance.error;
+
+  if (emptyDistance.ok && fullDistance.ok && fullDistance.value >= emptyDistance.value) {
+    errors.fullDistanceCm = 'La distancia al nivel lleno debe ser menor que la distancia al vacío.';
+  }
+  if (
+    height.ok &&
+    emptyDistance.ok &&
+    fullDistance.ok &&
+    emptyDistance.value - fullDistance.value > height.value
+  ) {
+    errors.emptyDistanceCm = 'El recorrido calibrado no puede superar la altura interior.';
   }
 
-  const height = parsePositive(input.heightCm, 'la altura en centímetros');
-  if (!height.ok) {
-    errors.heightCm = height.error;
-  } else if (height.value <= SAFETY_DISTANCE_CM) {
-    errors.heightCm = `La altura debe ser mayor que ${SAFETY_DISTANCE_CM} cm, la distancia de seguridad que aplica el sistema.`;
-  }
+  const common =
+    height.ok && emptyDistance.ok && fullDistance.ok && Object.keys(errors).length === 0
+      ? {
+          capacityLiters: capacityValue,
+          heightCm: height.value,
+          emptyDistanceCm: emptyDistance.value,
+          fullDistanceCm: fullDistance.value,
+        }
+      : null;
 
   if (input.geometry === 'vertical-cylinder') {
-    const radius = parsePositive(input.radiusCm, 'el radio en centímetros');
-    if (!radius.ok) {
-      errors.radiusCm = radius.error;
-    }
-
-    if (capacity.ok && height.ok && radius.ok && Object.keys(errors).length === 0) {
+    const radius = parsePositive(input.radiusCm, 'el radio interior en centímetros');
+    if (!radius.ok) errors.radiusCm = radius.error;
+    if (common && radius.ok && Object.keys(errors).length === 0) {
       return {
         valid: true,
-        config: {
-          geometry: 'vertical-cylinder',
-          capacityLiters: capacity.value,
-          heightCm: height.value,
-          radiusCm: radius.value,
-        },
+        config: { geometry: input.geometry, ...common, radiusCm: radius.value },
       };
     }
   } else {
-    const length = parsePositive(input.lengthCm, 'el largo en centímetros');
-    if (!length.ok) {
-      errors.lengthCm = length.error;
-    }
-
-    const width = parsePositive(input.widthCm, 'el ancho en centímetros');
-    if (!width.ok) {
-      errors.widthCm = width.error;
-    }
-
-    if (capacity.ok && height.ok && length.ok && width.ok && Object.keys(errors).length === 0) {
+    const length = parsePositive(input.lengthCm, 'el largo interior en centímetros');
+    const width = parsePositive(input.widthCm, 'el ancho interior en centímetros');
+    if (!length.ok) errors.lengthCm = length.error;
+    if (!width.ok) errors.widthCm = width.error;
+    if (common && length.ok && width.ok && Object.keys(errors).length === 0) {
       return {
         valid: true,
         config: {
-          geometry: 'rectangular',
-          capacityLiters: capacity.value,
-          heightCm: height.value,
+          geometry: input.geometry,
+          ...common,
           lengthCm: length.value,
           widthCm: width.value,
         },

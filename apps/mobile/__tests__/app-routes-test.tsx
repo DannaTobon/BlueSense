@@ -4,6 +4,16 @@ import { Slot } from 'expo-router';
 import ContainerScreen from '@/app/(app)/container';
 import MonitoringHistoryScreen from '@/app/(app)/history';
 
+jest.mock('@/features/water-container/use-water-container-draft', () => ({
+  useWaterContainerDraft: () => ({
+    loadState: { status: 'ready', draft: null },
+    saveState: { status: 'idle' },
+    retry: jest.fn(),
+    save: jest.fn(),
+    clearSaveFeedback: jest.fn(),
+  }),
+}));
+
 const routes = {
   '(app)/_layout': Slot,
   '(app)/container': ContainerScreen,

@@ -37,6 +37,8 @@ Application code does not store tokens manually. Sign-out calls Firebase Authent
 
 Authentication identifies the user. The backend must still verify that the authenticated user is authorized to access the requested BlueSense device.
 
+`GET/PUT /water-container` derive the draft owner exclusively from the verified Firebase ID token. The request body cannot set a UID, owner, device, or configuration status. Firestore is accessed only by the backend repository.
+
 ## Device authentication
 
 Each ESP32 has its own device credential. The device ID is an identifier, not a secret.

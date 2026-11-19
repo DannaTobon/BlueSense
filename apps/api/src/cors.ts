@@ -15,8 +15,8 @@ export function createCorsMiddleware(allowedOrigins: readonly string[]): Request
     response.setHeader('Access-Control-Allow-Origin', origin);
 
     if (request.method === 'OPTIONS') {
-      response.setHeader('Access-Control-Allow-Methods', 'GET');
-      response.setHeader('Access-Control-Allow-Headers', 'Authorization');
+      response.setHeader('Access-Control-Allow-Methods', 'GET, PUT');
+      response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
       response.status(204).end();
       return;
     }
